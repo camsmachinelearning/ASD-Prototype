@@ -1,0 +1,69 @@
+{
+  "originHash" : "2d2aa9213ad02b13d27b73faa6e1ac18c92f083dd9a3886db3512933e85b42b9",
+  "pins" : [
+    {
+      "identity" : "cwlcatchexception",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/mattgallagher/CwlCatchException.git",
+      "state" : {
+        "revision" : "07b2ba21d361c223e25e3c1e924288742923f08c",
+        "version" : "2.2.1"
+      }
+    },
+    {
+      "identity" : "cwlpreconditiontesting",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/mattgallagher/CwlPreconditionTesting.git",
+      "state" : {
+        "revision" : "0139c665ebb45e6a9fbdb68aabfd7c39f3fe0071",
+        "version" : "2.2.2"
+      }
+    },
+    {
+      "identity" : "lanumerics",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/phlegmaticprogrammer/LANumerics.git",
+      "state" : {
+        "branch" : "master",
+        "revision" : "c8924e5096cd7228d857a298f531257654e7ead5"
+      }
+    },
+    {
+      "identity" : "laswift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/AlexanderTar/LASwift.git",
+      "state" : {
+        "revision" : "85271d14245c88890d2f36066d1aaf71486fde06",
+        "version" : "0.3.2"
+      }
+    },
+    {
+      "identity" : "nimble",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Quick/Nimble.git",
+      "state" : {
+        "revision" : "1f3bde57bde12f5e7b07909848c071e9b73d6edc",
+        "version" : "10.0.0"
+      }
+    },
+    {
+      "identity" : "quick",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Quick/Quick.git",
+      "state" : {
+        "revision" : "f9d519828bb03dfc8125467d8f7b93131951124c",
+        "version" : "5.0.1"
+      }
+    },
+    {
+      "identity" : "swift-numerics",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-numerics",
+      "state" : {
+        "revision" : "6583ac70c326c3ee080c1d42d9ca3361dca816cd",
+        "version" : "0.1.0"
+      }
+    }
+  ],
+  "version" : 3
+}
