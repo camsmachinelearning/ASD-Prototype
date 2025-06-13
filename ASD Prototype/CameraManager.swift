@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 // =================================================================
 // FILE 1: CameraManager.swift
 // Create a new Swift file and name it CameraManager.swift
@@ -193,13 +192,3 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
         }
     }
 }
-=======
-//
-//  CameraManager.swift
-//  ASD Prototype
-//
-//  Created by Benjamin Lee on 6/12/25.
-//
-
-import Foundation
->>>>>>> main
