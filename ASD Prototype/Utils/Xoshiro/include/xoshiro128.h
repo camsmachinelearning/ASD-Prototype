@@ -11,7 +11,7 @@ private:
     }
 
 public:
-    explicit Xoshiro128(uint32 seed = std::random_device()()) {
+    explicit Xoshiro128(uint32_t seed = std::random_device()()) {
         seed_engine(seed);
     }
     

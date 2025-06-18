@@ -34,6 +34,7 @@ class Tracker {
     init() {
         self.activeTracks = IndexedSet<Track>()
         self.inactiveTracks = Set<Track>()
+        self.idGenerator = Xoshiro256(12345)
     }
     
     func update(detections: [Detection]) {

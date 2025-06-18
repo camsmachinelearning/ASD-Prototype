@@ -14,10 +14,8 @@ import LANumerics
 struct DetectedBox: Identifiable {
     let id = UUID()
     let rect: CGRect
-    let isPrediction: Bool // To distinguish between real detections and predictions
+    let boxColor: UIColor // New property for color
 }
-
-
 
 class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     @Published var captureSession: AVCaptureSession?
@@ -29,11 +27,8 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
     private var faceDetectionModel: VNCoreMLModel?
     private var faceEmbeddingModel: VNCoreMLModel?
     
-    private var trackedObjects: [KalmanFilter] = []
-    private let coreMotionManager = CoreMotionManager()
-
-    private var framesSinceLastDetection = 0
-    private let maxFramesToPredict = 15 // Predict for 0.5 seconds at 30fps
+    private var tracker = Tracker() // Instantiate the Tracker
+    private let coreMotionManager = CoreMotionManager() // Not directly used in this version, but kept for context
 
     override init() {
         super.init()
@@ -55,66 +50,14 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
         
         // Face Embedding
         do {
-            let faceDetectorWrapper = try YOLOv11n_face(configuration: MLModelConfiguration())
-            let visionModel = try VNCoreMLModel(for: faceDetectorWrapper.model)
-            self.faceDetectionModel = visionModel
+            let faceEmbeddingWrapper = try MobileFaceNet(configuration: MLModelConfiguration()) // Correctly load MobileFaceNet
+            let visionModel = try VNCoreMLModel(for: faceEmbeddingWrapper.model)
+            self.faceEmbeddingModel = visionModel
         } catch {
-            print("Error loading Face Detection model: \(error)")
+            print("Error loading Face Embedding model: \(error)")
         }
     }
     
-    private func visionRequestDidComplete(request: VNRequest, error: Error?) {
-//        if let results = request.results as? [VNRecognizedObjectObservation], let detections = results.filter {pred in pred.confidence > 0.5 } {
-//            let detectedRect = bestResult[].boundingBox
-//            framesSinceLastDetection = 0
-//            
-//            if kalmanFilter == nil {
-//                kalmanFilter = KalmanFilter(initialObservation: detectedRect)
-//            } else {
-//                let measurement = Vector<Float>([
-//                    Float(detectedRect.midX),
-//                    Float(detectedRect.midY),
-//                    Float(detectedRect.width),
-//                    Float(detectedRect.height)
-//                ])
-//                kalmanFilter?.update(measurement: measurement)
-//            }
-//            
-//            if let filteredRect = kalmanFilter?.predictedRect {
-//                DispatchQueue.main.async {
-//                    self.boundingBoxes = [DetectedBox(rect: filteredRect, isPrediction: false)]
-//                }
-//            }
-//        } else {
-//            framesSinceLastDetection += 1
-//            if framesSinceLastDetection <= maxFramesToPredict, let kf = kalmanFilter {
-//                kf.predict()
-//                // Placeholder for IMU data integration
-//                // You would use `coreMotionManager.rotationRate` to adjust the prediction
-//                let predictedRect = kf.predictedRect
-//                
-//                // Stop motion if predicted to be off-camera
-//                if isOffscreen(rect: predictedRect) {
-//                    kalmanFilter = nil // Stop tracking
-//                    DispatchQueue.main.async { self.boundingBoxes = [] }
-//                } else {
-//                    DispatchQueue.main.async {
-//                        self.boundingBoxes = [DetectedBox(rect: predictedRect, isPrediction: true)]
-//                    }
-//                }
-//            } else {
-//                kalmanFilter = nil
-//                DispatchQueue.main.async {
-//                    self.boundingBoxes = []
-//                }
-//            }
-//        }
-    }
-    
-    private func isOffscreen(rect: CGRect) -> Bool {
-        return rect.maxX < 0 || rect.minX > 1 || rect.maxY < 0 || rect.minY > 1
-    }
-
     private func checkPermissionsAndSetup() {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
@@ -173,9 +116,40 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
             do {
                 try await handler.perform([faceDetectionRequest])
                 
-                if let detections = (faceDetectionRequest.results as? [VNRecognizedObjectObservation])?.filter({ $0.confidence > 0.5 }), !detections.isEmpty {
-                    let embeddings = await self.runEmbeddingConcurrently(on: pixelBuffer, for: detections)
-
+                var newDetectionsForTracker: [Detection] = []
+                var boxesToDraw: [DetectedBox] = []
+                
+                if let observations = faceDetectionRequest.results as? [VNRecognizedObjectObservation] {
+                    // Filter raw detections by confidence and add them to boxesToDraw as red
+                    let confidentDetections = observations.filter { $0.confidence >= 0.5 }
+                    for detection in confidentDetections {
+                        boxesToDraw.append(DetectedBox(rect: detection.boundingBox, boxColor: .red))
+                    }
+                    
+                    if !confidentDetections.isEmpty {
+                        let embeddings = await self.runEmbeddingConcurrently(on: pixelBuffer, for: confidentDetections)
+                        
+                        // Combine confident detections with their corresponding embeddings for the tracker
+                        for (index, detection) in confidentDetections.enumerated() {
+                            if index < embeddings.count {
+                                let newDetection = Detection(box: detection.boundingBox, embedding: embeddings[index], confidence: detection.confidence)
+                                newDetectionsForTracker.append(newDetection)
+                            }
+                        }
+                    }
+                    
+                    // Update the tracker with the new detections
+                    self.tracker.update(detections: newDetectionsForTracker)
+                    
+                    // Add tracked faces to boxesToDraw as green
+                    for track in self.tracker.activeTracks {
+                        boxesToDraw.append(DetectedBox(rect: track.kalmanFilter.rect, boxColor: .green))
+                    }
+                }
+                
+                // Update boundingBoxes for UI
+                DispatchQueue.main.async {
+                    self.boundingBoxes = boxesToDraw
                 }
             } catch {
                 print("Failed to perform Vision request: \(error)")

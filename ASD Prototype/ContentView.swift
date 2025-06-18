@@ -37,13 +37,11 @@ class DrawingView: UIView {
         
         for box in boundingBoxes {
             let drawingRect = VNImageRectForNormalizedRect(box.rect, Int(bounds.width), Int(bounds.height))
-            let flippedRect = CGRect(
-                x: drawingRect.origin.x,
-                y: bounds.height - drawingRect.origin.y - drawingRect.height,
-                width: drawingRect.width,
-                height: drawingRect.height
-            )
-            blackoutPath.addRect(flippedRect)
+            // The VNImageRectForNormalizedRect function already returns a rectangle with top-left origin,
+            // so no further flipping is needed.
+            let correctedRect = drawingRect
+            
+            blackoutPath.addRect(correctedRect)
         }
         
         context.addPath(blackoutPath)
@@ -53,18 +51,14 @@ class DrawingView: UIView {
         // Draw bounding box outlines
         for box in boundingBoxes {
             let drawingRect = VNImageRectForNormalizedRect(box.rect, Int(bounds.width), Int(bounds.height))
-            let flippedRect = CGRect(
-                x: drawingRect.origin.x,
-                y: bounds.height - drawingRect.origin.y - drawingRect.height,
-                width: drawingRect.width,
-                height: drawingRect.height
-            )
+            // The VNImageRectForNormalizedRect function already returns a rectangle with top-left origin,
+            // so no further flipping is needed.
+            let correctedRect = drawingRect
             
-            // Green for detection, Orange for prediction
-            let color = box.isPrediction ? UIColor.orange.cgColor : UIColor.green.cgColor
-            context.setStrokeColor(color)
+            // Set color based on the boxColor property
+            context.setStrokeColor(box.boxColor.cgColor)
             context.setLineWidth(3)
-            context.stroke(flippedRect)
+            context.stroke(correctedRect)
         }
     }
 }
