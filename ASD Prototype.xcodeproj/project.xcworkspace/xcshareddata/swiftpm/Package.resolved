@@ -1,5 +1,5 @@
 {
-  "originHash" : "2d2aa9213ad02b13d27b73faa6e1ac18c92f083dd9a3886db3512933e85b42b9",
+  "originHash" : "c01a7136f4c4ce0e4e0d5856ccc029ed53e99db14c2fe02ac29a6688810b79b9",
   "pins" : [
     {
       "identity" : "cwlcatchexception",
@@ -17,6 +17,15 @@
       "state" : {
         "revision" : "0139c665ebb45e6a9fbdb68aabfd7c39f3fe0071",
         "version" : "2.2.2"
+      }
+    },
+    {
+      "identity" : "hungarianalgorithm",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/delicious-ai/HungarianAlgorithm.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "69f47d6bf9ea3fe978ee9e10190d0908854971ed"
       }
     },
     {

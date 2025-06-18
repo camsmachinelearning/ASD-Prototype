@@ -7,9 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		D8BB08D02DFB98C00058444C /* yolov11n-face.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = D8BB08CF2DFB98C00058444C /* yolov11n-face.mlpackage */; };
+		D8BB08D02DFB98C00058444C /* YOLOv11n-face.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = D8BB08CF2DFB98C00058444C /* YOLOv11n-face.mlpackage */; };
 		D8BB08DC2DFBA33D0058444C /* LANumerics in Frameworks */ = {isa = PBXBuildFile; productRef = D8BB08DB2DFBA33D0058444C /* LANumerics */; };
-		D8BB09062DFBB2A60058444C /* LASwift in Frameworks */ = {isa = PBXBuildFile; productRef = D8BB09052DFBB2A60058444C /* LASwift */; };
 		D8BB090C2DFBEBF30058444C /* MobileFaceNet.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = D8BB090B2DFBEBF30058444C /* MobileFaceNet.mlpackage */; };
 /* End PBXBuildFile section */
 
@@ -34,7 +33,7 @@
 		D8BB08992DFB764F0058444C /* ASD Prototype.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "ASD Prototype.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		D8BB08A82DFB76510058444C /* ASD PrototypeTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "ASD PrototypeTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		D8BB08B22DFB76510058444C /* ASD PrototypeUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "ASD PrototypeUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
-		D8BB08CF2DFB98C00058444C /* yolov11n-face.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = folder.mlpackage; path = "yolov11n-face.mlpackage"; sourceTree = "<group>"; };
+		D8BB08CF2DFB98C00058444C /* YOLOv11n-face.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = folder.mlpackage; path = "YOLOv11n-face.mlpackage"; sourceTree = "<group>"; };
 		D8BB090B2DFBEBF30058444C /* MobileFaceNet.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = folder.mlpackage; path = MobileFaceNet.mlpackage; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -62,7 +61,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				D8BB08DC2DFBA33D0058444C /* LANumerics in Frameworks */,
-				D8BB09062DFBB2A60058444C /* LASwift in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -90,7 +88,7 @@
 				D8BB08AB2DFB76510058444C /* ASD PrototypeTests */,
 				D8BB08B52DFB76510058444C /* ASD PrototypeUITests */,
 				D8BB089A2DFB764F0058444C /* Products */,
-				D8BB08CF2DFB98C00058444C /* yolov11n-face.mlpackage */,
+				D8BB08CF2DFB98C00058444C /* YOLOv11n-face.mlpackage */,
 				D8BB090B2DFBEBF30058444C /* MobileFaceNet.mlpackage */,
 			);
 			sourceTree = "<group>";
@@ -126,7 +124,6 @@
 			name = "ASD Prototype";
 			packageProductDependencies = (
 				D8BB08DB2DFBA33D0058444C /* LANumerics */,
-				D8BB09052DFBB2A60058444C /* LASwift */,
 			);
 			productName = "ASD Prototype";
 			productReference = D8BB08992DFB764F0058444C /* ASD Prototype.app */;
@@ -190,6 +187,7 @@
 				TargetAttributes = {
 					D8BB08982DFB764F0058444C = {
 						CreatedOnToolsVersion = 16.4;
+						LastSwiftMigration = 1640;
 					};
 					D8BB08A72DFB76510058444C = {
 						CreatedOnToolsVersion = 16.4;
@@ -213,6 +211,7 @@
 			packageReferences = (
 				D8BB08D92DFB9FF00058444C /* XCRemoteSwiftPackageReference "LASwift" */,
 				D8BB08DA2DFBA33D0058444C /* XCRemoteSwiftPackageReference "LANumerics" */,
+				D8AE12232E011B06003E8CDD /* XCRemoteSwiftPackageReference "HungarianAlgorithm" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D8BB089A2DFB764F0058444C /* Products */;
@@ -256,7 +255,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D8BB090C2DFBEBF30058444C /* MobileFaceNet.mlpackage in Sources */,
-				D8BB08D02DFB98C00058444C /* yolov11n-face.mlpackage in Sources */,
+				D8BB08D02DFB98C00058444C /* YOLOv11n-face.mlpackage in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -416,12 +415,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = X9PT5KMK89;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_RESOURCE_ACCESS_CAMERA = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/**";
 				INFOPLIST_KEY_NSCameraUsageDescription = "\"This app uses the camera to detect faces in real-time.\"";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -436,6 +437,10 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "LearningSwift.ASD-Prototype";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_INTEROP_MODE = objcxx;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_MEMORY_SAFETY = NO;
+				SWIFT_UPCOMING_FEATURE_INTERNAL_IMPORTS_BY_DEFAULT = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -446,12 +451,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = X9PT5KMK89;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_RESOURCE_ACCESS_CAMERA = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/**";
 				INFOPLIST_KEY_NSCameraUsageDescription = "\"This app uses the camera to detect faces in real-time.\"";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -466,6 +473,9 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "LearningSwift.ASD-Prototype";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_INTEROP_MODE = objcxx;
+				SWIFT_STRICT_MEMORY_SAFETY = NO;
+				SWIFT_UPCOMING_FEATURE_INTERNAL_IMPORTS_BY_DEFAULT = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -585,6 +595,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		D8AE12232E011B06003E8CDD /* XCRemoteSwiftPackageReference "HungarianAlgorithm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/delicious-ai/HungarianAlgorithm.git";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
 		D8BB08D92DFB9FF00058444C /* XCRemoteSwiftPackageReference "LASwift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/AlexanderTar/LASwift.git";
@@ -608,11 +626,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = D8BB08DA2DFBA33D0058444C /* XCRemoteSwiftPackageReference "LANumerics" */;
 			productName = LANumerics;
-		};
-		D8BB09052DFBB2A60058444C /* LASwift */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = D8BB08D92DFB9FF00058444C /* XCRemoteSwiftPackageReference "LASwift" */;
-			productName = LASwift;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

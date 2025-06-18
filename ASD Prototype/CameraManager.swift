@@ -17,6 +17,8 @@ struct DetectedBox: Identifiable {
     let isPrediction: Bool // To distinguish between real detections and predictions
 }
 
+
+
 class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     @Published var captureSession: AVCaptureSession?
     @Published var boundingBoxes: [DetectedBox] = []
@@ -24,7 +26,9 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
     private let videoOutput = AVCaptureVideoDataOutput()
     private let sessionQueue = DispatchQueue(label: "com.facedetector.sessionQueue")
     
-    private var visionModel: VNCoreMLModel?
+    private var faceDetectionModel: VNCoreMLModel?
+    private var faceEmbeddingModel: VNCoreMLModel?
+    
     private var trackedObjects: [KalmanFilter] = []
     private let coreMotionManager = CoreMotionManager()
 
@@ -40,65 +44,71 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
     }
     
     private func setupVision() {
-        guard let modelURL = Bundle.main.url(forResource: "yolov11n-face", withExtension: "mlmodelc") else {
-            print("Error: Model file not found")
-            return
+        // Face Detector
+        do {
+            let faceDetectorWrapper = try YOLOv11n_face(configuration: MLModelConfiguration())
+            let visionModel = try VNCoreMLModel(for: faceDetectorWrapper.model)
+            self.faceDetectionModel = visionModel
+        } catch {
+            print("Error loading Face Detection model: \(error)")
         }
         
+        // Face Embedding
         do {
-            let visionModel = try VNCoreMLModel(for: MLModel(contentsOf: modelURL))
-            self.visionModel = visionModel
+            let faceDetectorWrapper = try YOLOv11n_face(configuration: MLModelConfiguration())
+            let visionModel = try VNCoreMLModel(for: faceDetectorWrapper.model)
+            self.faceDetectionModel = visionModel
         } catch {
-            print("Error loading Vision model: \(error)")
+            print("Error loading Face Detection model: \(error)")
         }
     }
     
     private func visionRequestDidComplete(request: VNRequest, error: Error?) {
-        if let results = request.results as? [VNRecognizedObjectObservation], let bestResult = results.first(where: { $0.confidence > 0.5 }) {
-            let detectedRect = bestResult.boundingBox
-            framesSinceLastDetection = 0
-            
-            if kalmanFilter == nil {
-                kalmanFilter = KalmanFilter(initialObservation: detectedRect)
-            } else {
-                let measurement = Vector<Float>([
-                    Float(detectedRect.midX),
-                    Float(detectedRect.midY),
-                    Float(detectedRect.width),
-                    Float(detectedRect.height)
-                ])
-                kalmanFilter?.update(measurement: measurement)
-            }
-            
-            if let filteredRect = kalmanFilter?.predictedRect {
-                DispatchQueue.main.async {
-                    self.boundingBoxes = [DetectedBox(rect: filteredRect, isPrediction: false)]
-                }
-            }
-        } else {
-            framesSinceLastDetection += 1
-            if framesSinceLastDetection <= maxFramesToPredict, let kf = kalmanFilter {
-                kf.predict()
-                // Placeholder for IMU data integration
-                // You would use `coreMotionManager.rotationRate` to adjust the prediction
-                let predictedRect = kf.predictedRect
-                
-                // Stop motion if predicted to be off-camera
-                if isOffscreen(rect: predictedRect) {
-                    kalmanFilter = nil // Stop tracking
-                    DispatchQueue.main.async { self.boundingBoxes = [] }
-                } else {
-                    DispatchQueue.main.async {
-                        self.boundingBoxes = [DetectedBox(rect: predictedRect, isPrediction: true)]
-                    }
-                }
-            } else {
-                kalmanFilter = nil
-                DispatchQueue.main.async {
-                    self.boundingBoxes = []
-                }
-            }
-        }
+//        if let results = request.results as? [VNRecognizedObjectObservation], let detections = results.filter {pred in pred.confidence > 0.5 } {
+//            let detectedRect = bestResult[].boundingBox
+//            framesSinceLastDetection = 0
+//            
+//            if kalmanFilter == nil {
+//                kalmanFilter = KalmanFilter(initialObservation: detectedRect)
+//            } else {
+//                let measurement = Vector<Float>([
+//                    Float(detectedRect.midX),
+//                    Float(detectedRect.midY),
+//                    Float(detectedRect.width),
+//                    Float(detectedRect.height)
+//                ])
+//                kalmanFilter?.update(measurement: measurement)
+//            }
+//            
+//            if let filteredRect = kalmanFilter?.predictedRect {
+//                DispatchQueue.main.async {
+//                    self.boundingBoxes = [DetectedBox(rect: filteredRect, isPrediction: false)]
+//                }
+//            }
+//        } else {
+//            framesSinceLastDetection += 1
+//            if framesSinceLastDetection <= maxFramesToPredict, let kf = kalmanFilter {
+//                kf.predict()
+//                // Placeholder for IMU data integration
+//                // You would use `coreMotionManager.rotationRate` to adjust the prediction
+//                let predictedRect = kf.predictedRect
+//                
+//                // Stop motion if predicted to be off-camera
+//                if isOffscreen(rect: predictedRect) {
+//                    kalmanFilter = nil // Stop tracking
+//                    DispatchQueue.main.async { self.boundingBoxes = [] }
+//                } else {
+//                    DispatchQueue.main.async {
+//                        self.boundingBoxes = [DetectedBox(rect: predictedRect, isPrediction: true)]
+//                    }
+//                }
+//            } else {
+//                kalmanFilter = nil
+//                DispatchQueue.main.async {
+//                    self.boundingBoxes = []
+//                }
+//            }
+//        }
     }
     
     private func isOffscreen(rect: CGRect) -> Bool {
@@ -149,16 +159,75 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
     
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer),
-              let visionModel = self.visionModel else {
+              let faceDetectorModel = self.faceDetectionModel else {
             return
         }
         
-        let request = VNCoreMLRequest(model: visionModel, completionHandler: visionRequestDidComplete)
-        request.imageCropAndScaleOption = .scaleFill
-        
-        let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .up, options: [:])
-        try? handler.perform([request])
+        Task {
+            // 1. Create and perform the face detection request
+            let faceDetectionRequest = VNCoreMLRequest(model: faceDetectorModel)
+            faceDetectionRequest.imageCropAndScaleOption = .scaleFill
+            
+            let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .up, options: [:])
+            
+            do {
+                try await handler.perform([faceDetectionRequest])
+                
+                if let detections = (faceDetectionRequest.results as? [VNRecognizedObjectObservation])?.filter({ $0.confidence > 0.5 }), !detections.isEmpty {
+                    let embeddings = await self.runEmbeddingConcurrently(on: pixelBuffer, for: detections)
+
+                }
+            } catch {
+                print("Failed to perform Vision request: \(error)")
+            }
+        }
     }
+    
+    /// Creates a TaskGroup to run the embedding model on multiple detections concurrently.
+        private func runEmbeddingConcurrently(on pixelBuffer: CVPixelBuffer, for detections: [VNRecognizedObjectObservation]) async -> [MLMultiArray] {
+            guard self.faceEmbeddingModel != nil else { return [] }
+
+            return await withTaskGroup(of: MLMultiArray?.self, returning: [MLMultiArray].self) { group in
+                for detection in detections {
+                    // Add a new async task to the group for each detection.
+                    // The group runs these tasks in parallel.
+                    group.addTask {
+                        return await self.getEmbedding(on: pixelBuffer, for: detection)
+                    }
+                }
+                
+                var collectedEmbeddings: [MLMultiArray] = []
+                // Await each task's result as it completes and collect them.
+                for await embedding in group {
+                    if let embedding = embedding {
+                        collectedEmbeddings.append(embedding)
+                    }
+                }
+                return collectedEmbeddings
+            }
+        }
+
+        /// Runs the face embedding model for a single detection.
+        private func getEmbedding(on pixelBuffer: CVPixelBuffer, for detection: VNRecognizedObjectObservation) async -> MLMultiArray? {
+            guard let faceEmbedderModel = self.faceEmbeddingModel else { return nil }
+
+            let embeddingRequest = VNCoreMLRequest(model: faceEmbedderModel)
+            embeddingRequest.regionOfInterest = detection.boundingBox
+            
+            let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .up, options: [:])
+            
+            do {
+                try await handler.perform([embeddingRequest])
+                if let results = embeddingRequest.results as? [VNCoreMLFeatureValueObservation],
+                   let firstResult = results.first {
+                    return firstResult.featureValue.multiArrayValue
+                }
+            } catch {
+                print("Failed to run embedding model for a detection: \(error)")
+            }
+            return nil
+        }
+
     
     func startSession() {
         sessionQueue.async {
