@@ -180,7 +180,7 @@ extension Tracking {
         private func applyInitialCostFilter(_ progress: inout AssignmentProgress, costFunction: (Track, Detection, Costs) -> Bool) {
             if progress.isComplete { return }
             
-            var newAssignments: [Track : Int] = [:]
+            var newAssignments: [Track : (Detection, Int)] = [:]
             var detectionCounts: [Int] = [Int](repeating: 0, count: progress.detections.count)
             progress.potentialAssignments.reserveCapacity(progress.tracks.count)
             
@@ -207,15 +207,14 @@ extension Tracking {
                 if trackAssignments.isEmpty == false {
                     // add assignment if exactly one currently uncontested detection is found and we don't need to re-verify the embedding
                     if assignmentIndex != -1 && trackAssignments.count == 1 && !track.needsEmbeddingUpdate {
-                        newAssignments[track] = assignmentIndex
+                        newAssignments[track] = (progress.detections[assignmentIndex], assignmentIndex)
                     }
                     progress.potentialAssignments[track] = trackAssignments
                 }
             }
             
             // update assignments and remove assigned tracks and detections
-            for (track, index) in newAssignments where detectionCounts[index] == 1 {
-                let detection = progress.detections[index]
+            for (track, (detection, index)) in newAssignments where detectionCounts[index] == 1 {
                 if let costs = progress.potentialAssignments[track]?[detection] {
                     progress.assignments[track] = (detection, costs)
                     progress.tracks.remove(track)
