@@ -9,77 +9,78 @@ import Foundation
 import LANumerics
 import simd
 
+
 class VisualKF : KalmanFilter {
     // State: (x, y, s, r, vx, vy, s')
     // Measurement: (x, y, w, h)
     
     @inline(__always)
-    public var x: Float {
+    public var xPosition: Float {
         get {
-            return state[0]
+            return x[0]
         }
         set {
-            state[0] = newValue
+            x[0] = newValue
         }
     }
     
     @inline(__always)
-    public var y: Float {
+    public var yPosition: Float {
         get {
-            return state[1]
+            return x[1]
         }
         set {
-            state[1] = newValue
+            x[1] = newValue
         }
     }
     
     @inline(__always)
     public var scale: Float {
         get {
-            return state[2]
+            return x[2]
         }
         set {
-            state[2] = newValue
+            x[2] = newValue
         }
     }
     
     @inline(__always)
     public var aspectRatio: Float {
         get {
-            return state[3]
+            return x[3]
         }
         set {
-            state[3] = newValue
+            x[3] = newValue
         }
     }
     
     @inline(__always)
     public var xVelocity: Float {
         get {
-            return state[4]
+            return x[4]
         }
         set {
-            state[4] = newValue
+            x[4] = newValue
         }
     }
     
     @inline(__always)
     public var yVelocity: Float {
         get {
-            return state[5]
+            return x[5]
         }
         set {
-            state[5] = newValue
+            x[5] = newValue
         }
     }
     
     @inline(__always)
     public var growthRate: Float {
         get {
-            return state[6]
+            return x[6]
         }
         set {
-            state[6] = newValue
+            x[6] = newValue
         }
     }
     
@@ -105,8 +106,8 @@ class VisualKF : KalmanFilter {
         let width = self.width
         let height = self.height
         return CGRect(
-            x: CGFloat(x - width / 2),
-            y: CGFloat(y - height / 2),
+            x: CGFloat(self.xPosition - width / 2),
+            y: CGFloat(self.yPosition - height / 2),
             width: CGFloat(width),
             height: CGFloat(height)
         )
@@ -114,25 +115,37 @@ class VisualKF : KalmanFilter {
     
     private var dt: Float
     
-    init(initialObservation: CGRect, dt: Float = 1.0 / 25.0) {
+    init(initialObservation: CGRect, dt: Float = 1.0/30.0) {
         self.dt = dt
         
         super.init(
             x: VisualKF.convertRectToMeasurement(initialObservation) + [0, 0, 0],
             A: Matrix(rows: [
+                [1, 0, 0, 0, dt, 0, 0],
+                [0, 1, 0, 0, 0, dt, 0],
+                [0, 0, 1, 0, 0, 0, dt],
+                [0, 0, 0, 1, 0, 0, 0],
                 [0, 0, 0, 0, 1, 0, 0],
                 [0, 0, 0, 0, 0, 1, 0],
-                [0, 0, 0, 0, 0, 0, 1],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0]
+                [0, 0, 0, 0, 0, 0, 1]
             ]),
-            B: Matrix.zeros(7, 7),
+            B: Matrix.zero,
             H: Matrix(rows: 4, columns: 7, diagonal: [Float](repeating: 1, count: 4)),
-            Q:   1 * Matrix<Float>.eye(8),
-            R: 0.1 * Matrix<Float>.eye(4),
-            dt: dt
+            Q: Matrix(rows: [
+                [ 1.28268929e-06, -1.50126387e-07, -4.22737386e-08, -4.36372168e-07,  7.61219594e-05, -4.97359920e-06, -5.06409531e-07],
+                [-1.50126387e-07,  2.18705147e-06, -7.56191483e-08, -2.95182877e-07, -9.74383535e-06,  1.24688022e-04, -4.26979849e-06],
+                [-4.22737386e-08, -7.56191483e-08,  7.84852302e-08, -1.94331423e-06, -2.54116645e-06, -5.44480058e-06,  2.69219956e-06],
+                [-4.36372168e-07, -2.95182877e-07, -1.94331423e-06,  4.38327846e-04, -2.40331927e-05,  4.01711922e-05,  1.21027027e-06],
+                [ 7.61219594e-05, -9.74383535e-06, -2.54116645e-06, -2.40331927e-05,  4.56885702e-03, -3.41518437e-04, -3.13712091e-05],
+                [-4.97359920e-06,  1.24688022e-04, -5.44480058e-06,  4.01711922e-05, -3.41518437e-04,  7.49469293e-03, -2.64343444e-04],
+                [-5.06409531e-07, -4.26979849e-06,  2.69219956e-06,  1.21027027e-06, -3.13712091e-05, -2.64343444e-04,  1.58519051e-04]
+            ]),
+            R: Matrix(rows: [
+                [ 2.68798854e-07,  6.93498964e-08,  1.41375159e-09, -1.32603707e-06],
+                [ 6.93498964e-08,  4.22660920e-07,  5.52960627e-08, -2.87047903e-07],
+                [ 1.41375159e-09,  5.52960627e-08,  1.00707611e-07, -1.23742312e-06],
+                [-1.32603707e-06, -2.87047903e-07, -1.23742312e-06,  2.64800784e-04]
+            ])
         )
     }
     
@@ -146,103 +159,94 @@ class VisualKF : KalmanFilter {
     }
     
     override func predict() {
-        let dtVec = SIMD3<Float>(repeating: self.dt)
-        let dxVec = SIMD3<Float>(self.state.vector[4..<7]) * dtVec
-        let xVec = SIMD3<Float>(self.state.vector[0..<3]) + dxVec
-        
-        self.state[0] = xVec.x
-        self.state[1] = xVec.y
-        self.state[2] = xVec.z
-    }
-    
-    func computeMotionCost(measured: CGRect) -> Float {
-        let measurement = SIMD4(
-            x: Float(measured.midX),
-            y: Float(measured.midY),
-            z: Float(measured.width * measured.height),
-            w: Float(measured.width / measured.height),
-        )
-        
-        let y = measurement - (measurementMatrix * state).simd4
-        let S = (measurementMatrix * covariance * measurementMatrix.transpose).simd4x4 + measurementNoiseCovariance.simd4x4
-        let SInv = S.inverse
-        return simd_dot(y, SInv * y)
+        self.xPosition += self.dt * self.xVelocity
+        self.yPosition += self.dt * self.yVelocity
+        self.scale += self.dt * self.growthRate
+        self.updateCovariancePredict()
     }
     
     func update(measurement: CGRect) {
-        super.update(measurement: Vector<Float>(VisualKF.convertRectToMeasurement(measurement)))
+        super.update(measurement: VisualKF.convertRectToMeasurement(measurement))
     }
 }
 
 class KalmanFilter {
-    // State vector
-    public var state: Matrix<Float>
+    /// State vector
+    public var x: Matrix<Float>
 
-    // Covariance matrix
-    public fileprivate(set) var covariance: Matrix<Float>
+    /// Covariance matrix
+    public var P: Matrix<Float>
 
-    // State transition matrix
-    public let stateTransitionMatrix: Matrix<Float>
+    /// State transition matrix
+    public let A: Matrix<Float>
     
-    // Control matrix
-    public let controlMatrix: Matrix<Float>
+    /// Control matrix
+    public let B: Matrix<Float>
 
-    // Measurement matrix
-    public let measurementMatrix: Matrix<Float>
+    /// Measurement matrix
+    public let H: Matrix<Float>
 
-    // Process noise covariance
-    public var processNoiseCovariance: Matrix<Float>
+    /// Process noise covariance
+    public var Q: Matrix<Float>
 
-    // Measurement noise covariance
-    public var measurementNoiseCovariance: Matrix<Float>
+    /// Measurement noise covariance
+    public var R: Matrix<Float>
     
-    // Identity matrix
+    /// Identity matrix
     public let I: Matrix<Float>
 
-    init(x: Vector<Float>, A: Matrix<Float>, B: Matrix<Float>, H: Matrix<Float>, Q: Matrix<Float>, R: Matrix<Float>, dt: Float, covariance: Matrix<Float>? = nil) {
+    init(x: Vector<Float>, A: Matrix<Float>, B: Matrix<Float>, H: Matrix<Float>, Q: Matrix<Float>, R: Matrix<Float>, P0: Matrix<Float>? = nil) {
         self.I = Matrix<Float>.eye(x.count)
         
-        self.state = Matrix<Float>(x)
+        self.x = Matrix<Float>(x)
         
-        self.covariance = covariance ?? 1000.0 * Matrix<Float>.eye(x.count)
+        self.A = A
+        self.B = B
 
-        self.stateTransitionMatrix = dt * A + Matrix<Float>.eye(x.count)
-        self.controlMatrix = dt * B
-
-        self.measurementMatrix = H
-
-        // These noise values might need tuning.
-        self.processNoiseCovariance = Q
-        self.measurementNoiseCovariance = R
+        self.H = H
+        
+        self.Q = Q
+        self.R = R
+        
+        self.P = P0 ?? 1000 * Q + H.transpose * R * H
     }
 
     public func predict() {
-        state = stateTransitionMatrix * state
-        updateCovariancePredict()
+        self.x = self.A * self.x
+        self.updateCovariancePredict()
     }
     
-    public func predict(u: Vector<Float>) {
-        state = stateTransitionMatrix * state + controlMatrix * Matrix<Float>(u)
-        updateCovariancePredict()
+    public func predict(input u: Vector<Float>) {
+        self.x = self.A * self.x + self.B * Matrix<Float>(u)
+        self.updateCovariancePredict()
     }
     
     @inline(__always)
-    func updateCovariancePredict() {
-        covariance = stateTransitionMatrix * covariance * stateTransitionMatrix.transpose + processNoiseCovariance
+    public func updateCovariancePredict() {
+        self.P = self.A * self.P * self.A.transpose + self.Q
     }
     
-    public func update(measurement: Vector<Float>) {
-        let y = Matrix<Float>(measurement) - (measurementMatrix * state)
-        let S = measurementMatrix * covariance * measurementMatrix.transpose + measurementNoiseCovariance
-        guard let S_inv = S.inverse else { return }
-        
-        let K = covariance * measurementMatrix.transpose * S_inv
-        state = state + (K * y)
-        covariance = (I - K * measurementMatrix) * covariance
+    public func update(measurement z: Vector<Float>) {
+        let y = Matrix<Float>(z) - (self.H * self.x)
+        let S = self.H * self.P * self.H.transpose + self.R
+        guard let SInv = S.inverse else { return }
+        let K = self.P * self.H.transpose * SInv
+        self.update(innovation: y, gain: K)
     }
     
-    public func step(measurement: Vector<Float>) {
-        predict()
-        update(measurement: measurement)
+    @inline(__always)
+    public func update(innovation y: Matrix<Float>, gain K: Matrix<Float>) {
+        self.x = self.x + (K * y)
+        self.P = (self.I - K * self.H) * self.P
+    }
+    
+    public func step(measurement z: Vector<Float>) {
+        self.predict()
+        self.update(measurement: z)
+    }
+    
+    public func step(input u: Vector<Float>, measurement z: Vector<Float>) {
+        self.predict()
+        self.update(measurement: z)
     }
 }

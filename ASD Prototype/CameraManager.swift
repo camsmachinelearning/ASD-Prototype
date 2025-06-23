@@ -1,220 +1,153 @@
-//
-//  CameraManager.swift
-//  ASD Prototype
-//
-//  Created by Benjamin Lee on 6/12/25.
-//
+// =================================================================
+// FILE 1: CameraManager.swift
+// Create a new Swift file and name it CameraManager.swift
+// =================================================================
+// This class is the heart of our app. It handles setting up the camera,
+// processing video frames, and running the Core ML model via Vision.
+// IMPORTANT: This class has no knowledge of the UI. It only deals with
+// camera data and provides normalized results (coordinates from 0.0 to 1.0).
 
 import AVFoundation
 import Vision
 import UIKit
 import SwiftUI
-import LANumerics
 
-struct DetectedBox: Identifiable {
-    let id = UUID()
-    let rect: CGRect
-    let boxColor: UIColor // New property for color
-}
-
-class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBufferDelegate {
-    @Published var captureSession: AVCaptureSession?
-    @Published var boundingBoxes: [DetectedBox] = []
-
-    private let videoOutput = AVCaptureVideoDataOutput()
-    private let sessionQueue = DispatchQueue(label: "com.facedetector.sessionQueue")
-    
-    private var faceDetectionModel: VNCoreMLModel?
-    private var faceEmbeddingModel: VNCoreMLModel?
-    
-    private var tracker = Tracker() // Instantiate the Tracker
-    private let coreMotionManager = CoreMotionManager() // Not directly used in this version, but kept for context
-
-    override init() {
-        super.init()
-        sessionQueue.async {
-            self.setupVision()
-            self.checkPermissionsAndSetup()
-        }
-    }
-    
-    private func setupVision() {
-        // Face Detector
-        do {
-            let faceDetectorWrapper = try YOLOv11n_face(configuration: MLModelConfiguration())
-            let visionModel = try VNCoreMLModel(for: faceDetectorWrapper.model)
-            self.faceDetectionModel = visionModel
-        } catch {
-            print("Error loading Face Detection model: \(error)")
+extension Tracking {
+    class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
+        
+        // This allows the CameraPreview view to reactively update when the session is ready.
+        @Published var captureSession: AVCaptureSession?
+        
+        // Published properties to update the SwiftUI view
+        @Published public private(set) var detections: [Face] = []
+        
+        @Published public private(set) var videoSize: CGSize
+        
+        // AVFoundation properties
+        private let videoOutput = AVCaptureVideoDataOutput()
+        private let sessionQueue = DispatchQueue(label: "com.facedetector.sessionQueue")
+        
+        // Vision and Core ML properties
+        private var tracker: Tracker?
+        
+        override init() {
+            self.videoSize = CGSize(width: 720, height: 1280)
+            super.init()
+            // Asynchronously check permissions and then set up the session
+            sessionQueue.async {
+                let faceProcessor = try? FaceProcessor()
+                self.tracker = Tracker(faceProcessor: faceProcessor!)
+                self.checkPermissionsAndSetup()
+            }
         }
         
-        // Face Embedding
-        do {
-            let faceEmbeddingWrapper = try MobileFaceNet(configuration: MLModelConfiguration()) // Correctly load MobileFaceNet
-            let visionModel = try VNCoreMLModel(for: faceEmbeddingWrapper.model)
-            self.faceEmbeddingModel = visionModel
-        } catch {
-            print("Error loading Face Embedding model: \(error)")
+        // MARK: - AVCaptureVideoDataOutputSampleBufferDelegate
+        
+        func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+            self.tracker?.update(sampleBuffer: sampleBuffer)
+            let res = self.tracker?.activeFaces ?? []
+            
+            Task { @MainActor [res] in
+                self.detections = res
+            }
         }
-    }
-    
-    private func checkPermissionsAndSetup() {
-        switch AVCaptureDevice.authorizationStatus(for: .video) {
-        case .authorized:
-            setupCaptureSession()
-        case .notDetermined:
-            AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
-                if granted {
-                    self?.setupCaptureSession()
+        
+        // Public methods to control session from the UI. These are useful for app lifecycle events.
+        func startSession() {
+            sessionQueue.async {
+                if self.captureSession?.isRunning == false {
+                    self.captureSession?.startRunning()
                 }
             }
-        default:
-            print("Camera access denied.")
         }
-    }
-    
-    private func setupCaptureSession() {
-        let session = AVCaptureSession()
-        session.sessionPreset = .hd1280x720
         
-        guard let captureDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front) else { return }
-        
-        do {
-            let input = try AVCaptureDeviceInput(device: captureDevice)
-            if session.canAddInput(input) {
-                session.addInput(input)
+        func stopSession() {
+            sessionQueue.async {
+                if self.captureSession?.isRunning == true {
+                    self.captureSession?.stopRunning()
+                }
             }
-        } catch {
-            print("Error setting up camera input: \(error)")
-            return
         }
         
-        videoOutput.setSampleBufferDelegate(self, queue: sessionQueue)
-        if session.canAddOutput(videoOutput) {
-            session.addOutput(videoOutput)
+        // MARK: - AVFoundation Camera Setup
+        
+        private func checkPermissionsAndSetup() {
+            switch AVCaptureDevice.authorizationStatus(for: .video) {
+            case .authorized:
+                setupCaptureSession()
+            case .notDetermined:
+                AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
+                    if granted {
+                        self?.setupCaptureSession()
+                    } else {
+                        print("Camera access was denied.")
+                    }
+                }
+            default:
+                print("Camera access is restricted or denied.")
+            }
         }
         
-        session.startRunning()
-        DispatchQueue.main.async {
-            self.captureSession = session
-        }
-    }
-    
-    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer),
-              let faceDetectorModel = self.faceDetectionModel else {
-            return
-        }
-        
-        Task {
-            // 1. Create and perform the face detection request
-            let faceDetectionRequest = VNCoreMLRequest(model: faceDetectorModel)
-            faceDetectionRequest.imageCropAndScaleOption = .scaleFill
+        private func setupCaptureSession() {
+            // This method should only be called from the sessionQueue
             
-            let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .up, options: [:])
+            let session = AVCaptureSession()
+            session.sessionPreset = .hd1280x720
+            
+            //        guard let device = AVCaptureDevice.default(for: .video) else { return }
+            //        let resolution = CMVideoFormatDescriptionGetDimensions(device.activeFormat.formatDescription)
+            //        DispatchQueue.main.async {
+            //            self.videoSize = CGSize(width: CGFloat(resolution.width), height: CGFloat(resolution.height))
+            //        }
+            
+            guard let captureDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front) else {
+                print("Error: No back camera found.")
+                return
+            }
             
             do {
-                try await handler.perform([faceDetectionRequest])
-                
-                var newDetectionsForTracker: [Detection] = []
-                var boxesToDraw: [DetectedBox] = []
-                
-                if let observations = faceDetectionRequest.results as? [VNRecognizedObjectObservation] {
-                    // Filter raw detections by confidence and add them to boxesToDraw as red
-                    let confidentDetections = observations.filter { $0.confidence >= 0.5 }
-                    for detection in confidentDetections {
-                        boxesToDraw.append(DetectedBox(rect: detection.boundingBox, boxColor: .red))
-                    }
-                    
-                    if !confidentDetections.isEmpty {
-                        let embeddings = await self.runEmbeddingConcurrently(on: pixelBuffer, for: confidentDetections)
-                        
-                        // Combine confident detections with their corresponding embeddings for the tracker
-                        for (index, detection) in confidentDetections.enumerated() {
-                            if index < embeddings.count {
-                                let newDetection = Detection(box: detection.boundingBox, embedding: embeddings[index], confidence: detection.confidence)
-                                newDetectionsForTracker.append(newDetection)
-                            }
-                        }
-                    }
-                    
-                    // Update the tracker with the new detections
-                    self.tracker.update(detections: newDetectionsForTracker)
-                    
-                    // Add tracked faces to boxesToDraw as green
-                    for track in self.tracker.activeTracks {
-                        boxesToDraw.append(DetectedBox(rect: track.kalmanFilter.rect, boxColor: .green))
-                    }
-                }
-                
-                // Update boundingBoxes for UI
-                DispatchQueue.main.async {
-                    self.boundingBoxes = boxesToDraw
+                let input = try AVCaptureDeviceInput(device: captureDevice)
+                if session.canAddInput(input) {
+                    session.addInput(input)
                 }
             } catch {
-                print("Failed to perform Vision request: \(error)")
+                print("Error setting up camera input: \(error)")
+                return
             }
-        }
-    }
-    
-    /// Creates a TaskGroup to run the embedding model on multiple detections concurrently.
-        private func runEmbeddingConcurrently(on pixelBuffer: CVPixelBuffer, for detections: [VNRecognizedObjectObservation]) async -> [MLMultiArray] {
-            guard self.faceEmbeddingModel != nil else { return [] }
-
-            return await withTaskGroup(of: MLMultiArray?.self, returning: [MLMultiArray].self) { group in
-                for detection in detections {
-                    // Add a new async task to the group for each detection.
-                    // The group runs these tasks in parallel.
-                    group.addTask {
-                        return await self.getEmbedding(on: pixelBuffer, for: detection)
+            
+            videoOutput.setSampleBufferDelegate(self, queue: sessionQueue)
+            videoOutput.alwaysDiscardsLateVideoFrames = true
+            videoOutput.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
+            
+            if session.canAddOutput(videoOutput) {
+                session.addOutput(videoOutput)
+            } else {
+                print("Error: Could not add video output.")
+                return
+            }
+            
+            if let connection = videoOutput.connection(with: .video) {
+                // Use the new API on iOS 17 and later
+                if #available(iOS 17.0, *) {
+                    // To set portrait orientation, we check for and set a 90-degree rotation.
+                    if connection.isVideoRotationAngleSupported(90) {
+                        connection.videoRotationAngle = 90
+                    }
+                } else {
+                    // Fallback for earlier iOS versions
+                    if connection.isVideoOrientationSupported {
+                        connection.videoOrientation = .portrait
                     }
                 }
-                
-                var collectedEmbeddings: [MLMultiArray] = []
-                // Await each task's result as it completes and collect them.
-                for await embedding in group {
-                    if let embedding = embedding {
-                        collectedEmbeddings.append(embedding)
-                    }
-                }
-                return collectedEmbeddings
             }
-        }
-
-        /// Runs the face embedding model for a single detection.
-        private func getEmbedding(on pixelBuffer: CVPixelBuffer, for detection: VNRecognizedObjectObservation) async -> MLMultiArray? {
-            guard let faceEmbedderModel = self.faceEmbeddingModel else { return nil }
-
-            let embeddingRequest = VNCoreMLRequest(model: faceEmbedderModel)
-            embeddingRequest.regionOfInterest = detection.boundingBox
             
-            let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .up, options: [:])
+            // Start the session on the background queue immediately after configuration.
+            session.startRunning()
             
-            do {
-                try await handler.perform([embeddingRequest])
-                if let results = embeddingRequest.results as? [VNCoreMLFeatureValueObservation],
-                   let firstResult = results.first {
-                    return firstResult.featureValue.multiArrayValue
-                }
-            } catch {
-                print("Failed to run embedding model for a detection: \(error)")
-            }
-            return nil
-        }
-
-    
-    func startSession() {
-        sessionQueue.async {
-            if self.captureSession?.isRunning == false {
-                self.captureSession?.startRunning()
-            }
-        }
-    }
-    
-    func stopSession() {
-        sessionQueue.async {
-            if self.captureSession?.isRunning == true {
-                self.captureSession?.stopRunning()
+            // Publish the now-running session to the main thread.
+            
+            Task { @MainActor in
+                self.captureSession = session
             }
         }
     }

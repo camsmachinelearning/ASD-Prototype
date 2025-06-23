@@ -11,6 +11,15 @@ struct IndexedSet<Element: Identifiable>:
     // MARK: - Underlying Storage
     private(set) var elements: [Element] = []
     private var indexByID: [Element.ID: Int] = [:]
+    
+    public var count: Int { elements.count }
+    
+    public var capacity: Int { elements.capacity }
+    
+    mutating func reserveCapacity(_ newCapacity: Int) {
+        elements.reserveCapacity(newCapacity)
+        indexByID.reserveCapacity(newCapacity)
+    }
 
     // MARK: - RangeReplaceableCollection
     init() {
