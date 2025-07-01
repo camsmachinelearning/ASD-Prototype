@@ -6,7 +6,7 @@
 //
 
 import XCTest
-@testable import ASD_Prototype
+import ASD_Prototype
 
 final class ASD_PrototypeTests: XCTestCase {
 

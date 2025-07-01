@@ -13,7 +13,7 @@ import AVFoundation
 // than SwiftUI for this use case because its coordinate system is
 // directly tied to the camera preview layer's frame.
 class DrawingView: UIView {
-    var boundingBoxes: [CGRect] = [] {
+    var faces: [ASD.SpeakerData] = [] {
         // When this property is set, redraw the view.
         didSet {
             // Must be called on the main thread.
@@ -22,11 +22,44 @@ class DrawingView: UIView {
             }
         }
     }
+
+    var drawRect: CGRect = .zero
+    var scale: CGSize = .zero
+    var videoSize: CGSize = .zero
     
-    override init(frame: CGRect) {
+    var startTime: Double
+    
+    init(frame: CGRect, videoSize: CGSize) {
+        self.startTime = Date().timeIntervalSince1970
         super.init(frame: frame)
         backgroundColor = .clear // Make it transparent
         isOpaque = false
+        
+        let videoAspectRatio = videoSize.width / videoSize.height
+        let frameAspectRatio = self.bounds.width / self.bounds.height
+        
+        if (videoAspectRatio > frameAspectRatio) {
+            // video is too wide -> fix x-axis
+            let drawingWidth = self.bounds.height * videoAspectRatio
+            self.drawRect = CGRect(
+                x: (self.bounds.width - drawingWidth) / 2,
+                y: 0,
+                width: drawingWidth,
+                height: self.bounds.height
+            )
+        } else {
+            // video is too tall -> fix y-axis
+            let drawingHeight = self.bounds.width / videoAspectRatio
+            self.drawRect = CGRect(
+                x: 0,
+                y: (self.bounds.height - drawingHeight) / 2,
+                width: self.bounds.width,
+                height: drawingHeight
+            )
+        }
+        
+        self.scale = CGSize(width: self.drawRect.width / videoSize.width, height: self.drawRect.height / videoSize.height)
+        self.videoSize = videoSize
     }
     
     required init?(coder: NSCoder) {
@@ -41,25 +74,54 @@ class DrawingView: UIView {
         
         var cutout = CGPath(rect: CGRect.zero, transform: nil)
         
-        context.setStrokeColor(UIColor.green.cgColor)
         context.setLineWidth(3)
         
-        for box in boundingBoxes {
-            print("Box: (x = \((box.minX + box.maxX)/2), y = \((box.minY + box.maxY)/2), w = \(box.width), h = \(box.height)), \t\t Bounds: \(self.bounds)")
-            // Here, self.bounds is the frame of this view, which is sized to match the preview layer.
-            let drawingRect = VNImageRectForNormalizedRect(box, Int(self.bounds.width), Int(self.bounds.height))
+        for face in faces {
+            if face.status == .active {
+                if face.misses > 0 {
+                    context.setStrokeColor(UIColor.yellow.cgColor)
+                } else {
+                    context.setStrokeColor(UIColor.green.cgColor)
+                }
+            } else {
+                context.setStrokeColor(UIColor.orange.cgColor)
+            }
             
-            let size = max(drawingRect.width, drawingRect.height)
+            if face.score > 0 {
+                context.setLineWidth(10)
+            } else {
+                context.setLineWidth(3)
+            }
+            let box = face.rect
+            //print("\(Date().timeIntervalSince1970 - self.startTime),\(box.midX),\(box.midY),\(box.width * box.height),\(box.width / box.height)")
+            // Here, self.bounds is the frame of this view, which is sized to match the preview layer.
+            
             
             // Flip the Y-coordinate because Vision's origin is bottom-left, and UIKit's is top-left.
             let flippedRect = CGRect(
-                x: self.bounds.width - drawingRect.origin.x - drawingRect.width/2 - size/2,
-                y: self.bounds.height - drawingRect.origin.y - drawingRect.height,
-                width: size, // drawingRect.width,
-                height: size // drawingRect.height
+                x: drawRect.origin.x + (self.videoSize.width - box.maxX) * scale.width,
+                y: drawRect.origin.y + (self.videoSize.height - box.maxY) * scale.height,
+                width: box.width * scale.width,
+                height: box.height * scale.height
             )
             
-            //context.stroke(flippedRect)
+            context.stroke(flippedRect)
+            
+            // write the ID above the rectangle
+            let idText = face.string as NSString
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 12),
+                .foregroundColor: UIColor.green
+            ]
+
+            let textSize = idText.size(withAttributes: attributes)
+            let textOrigin = CGPoint(
+                x: flippedRect.origin.x,
+                y: flippedRect.origin.y - textSize.height - 2 // small gap above box
+            )
+
+            idText.draw(at: textOrigin, withAttributes: attributes)
+            
             let rectPath = CGPath(rect: flippedRect, transform: nil)
             cutout = cutout.union(rectPath)
         }
@@ -68,14 +130,14 @@ class DrawingView: UIView {
         context.addPath(blackoutPath)
         context.setFillColor(UIColor.black.cgColor)
         context.setBlendMode(.normal)
-        context.drawPath(using: .eoFill)
+        //context.drawPath(using: .eoFill)
     }
 }
 
 // The UIViewRepresentable now manages a container view that holds both
 // the camera preview layer and the drawing view on top.
 struct CameraPreview: UIViewRepresentable {
-    @ObservedObject var cameraManager: CameraManager
+    @ObservedObject var cameraManager: AVManager
     
     func makeUIView(context: Context) -> UIView {
         let view = UIView(frame: UIScreen.main.bounds)
@@ -86,7 +148,9 @@ struct CameraPreview: UIViewRepresentable {
         view.layer.addSublayer(previewLayer)
         
         // Setup the drawing layer
-        let drawingView = DrawingView(frame: view.bounds)
+        let drawingView = DrawingView(frame: view.bounds, videoSize: cameraManager.videoSize)
+        print("size: \(cameraManager.videoSize)")
+        
         drawingView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         view.addSubview(drawingView)
         
@@ -109,7 +173,7 @@ struct CameraPreview: UIViewRepresentable {
         
         // Pass the latest bounding boxes to the drawing view
         // The drawingView will automatically redraw itself when this property is set.
-        context.coordinator.drawingView?.boundingBoxes = cameraManager.boundingBoxes.map { $0.rect }
+        context.coordinator.drawingView?.faces = cameraManager.detections
     }
     
     func makeCoordinator() -> Coordinator {
@@ -126,7 +190,7 @@ struct CameraPreview: UIViewRepresentable {
 // The ContentView becomes very clean, as all the complex drawing logic
 // is now encapsulated in the CameraPreview representable.
 struct ContentView: View {
-    @StateObject private var cameraManager = CameraManager()
+    @StateObject private var cameraManager = AVManager()
     
     var body: some View {
         CameraPreview(cameraManager: cameraManager)
