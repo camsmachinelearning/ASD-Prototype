@@ -27,9 +27,9 @@ extension ASD {
         
         var string: String { "ID: \(id.uuidString)\n\(self.costString)" }
         
-        init(track: Tracking.Tracker.SendableTrack, score: Float) {
+        init(track: Tracking.Tracker.SendableTrack, score: Float, rect: CGRect? = nil) {
             self.id = track.id
-            self.rect = track.rect
+            self.rect = rect ?? track.rect
             self.status = track.status
             self.costString = track.costString
             self.misses = track.misses

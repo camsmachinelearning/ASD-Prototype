@@ -12,14 +12,17 @@ import Foundation
 
 extension ASD {
     final class VideoBuffer: Utils.MLBuffer {
-        public let frameSize: CGSize        
+        
+        public let frameSize: CGSize
+        public private(set) var cropRect: CGRect
+        
         private let cropScale: CGFloat
-        private var frameMod6: Int = 0
         
         init(frontPadding: Int = 3, backPadding: Int = 25, cropPadding: CGFloat = 0.40,
              length: Int = 25, frameSize: CGSize = .init(width: 112, height: 112)) {
             self.cropScale = cropPadding
             self.frameSize = frameSize
+            self.cropRect = .zero
             super.init(
                 chunkShape: [Int(frameSize.width), Int(frameSize.height)],
                 defaultChunk: .init(repeating: 110, count: Int(frameSize.width * frameSize.height)),
@@ -29,17 +32,15 @@ extension ASD {
             )
         }
         
-        public func write(from pixelBuffer: CVPixelBuffer, croppedTo rect: CGRect) {
-            self.frameMod6 += 1
-            self.frameMod6 %= 6
-            if self.frameMod6 == 0 { return }
-            
-            let cropRect = self.computeCropRect(pixelBuffer: pixelBuffer, rect: rect)
-            let _ = self.withUnsafeWritingPointer {
-                try? preprocessImage(pixelBuffer: pixelBuffer,
-                                     cropTo: cropRect,
-                                     resizeTo: self.frameSize,
-                                     to: $0.baseAddress!)
+        public func write(from pixelBuffer: CVPixelBuffer, croppedTo rect: CGRect, skip: Bool = false) {
+            self.cropRect = self.computeCropRect(pixelBuffer: pixelBuffer, rect: rect)
+            if skip == false {
+                let _ = self.withUnsafeWritingPointer {
+                    try? preprocessImage(pixelBuffer: pixelBuffer,
+                                         cropTo: cropRect,
+                                         resizeTo: self.frameSize,
+                                         to: $0.baseAddress!)
+                }
             }
         }
         
@@ -70,31 +71,17 @@ extension ASD {
             let detectionCenterX = detectionRect.midX * bufferWidth
             let detectionCenterY = detectionRect.midY * bufferHeight
 
-            // 'bs' is half the size of the largest dimension of the detection box.
-            let bs = max(detectionWidth, detectionHeight) / 2.0
+            let bs = max(detectionWidth, detectionHeight) / 2.0 // box size
+            let cs = self.cropScale
             
-            // 'cs' is the crop scale factor.
-            let cs = cropScale
-
-            // The Python script calculates an intermediate crop centered at `(mx, my + bs*cs)`.
-            // Let's find the center of that intermediate crop.
-            let intermediateCropCenterX = detectionCenterX
-            let intermediateCropCenterY = detectionCenterY + (bs * cs)
-            
-            // --- Step 2: Calculate the final crop rect ---
-            
-            // The Python script resizes the intermediate crop to 224x224 and then takes
-            // a 112x112 center crop. This is equivalent to taking a center crop of the
-            // intermediate rect that is half its size.
-            
-            // The side length of the intermediate crop is `2 * bs * (1 + cs)`.
-            // The side length of our final crop will be half of that.
             let finalSideLength = bs * (1.0 + cs)
             let finalHalfSide = finalSideLength / 2.0
             
-            // Calculate the origin of the final crop rectangle.
+            let intermediateCropCenterX = detectionCenterX
+            let intermediateCropCenterY = detectionCenterY - (bs * cs)
+            
             let finalOriginX = intermediateCropCenterX - finalHalfSide
-            let finalOriginY = intermediateCropCenterY - finalSideLength
+            let finalOriginY = intermediateCropCenterY - finalHalfSide
             
             return CGRect(
                 x: finalOriginX,

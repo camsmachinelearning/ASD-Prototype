@@ -24,6 +24,8 @@ class DrawingView: UIView {
     }
 
     var drawRect: CGRect = .zero
+    var scale: CGSize = .zero
+    var videoSize: CGSize = .zero
     
     var startTime: Double
     
@@ -55,6 +57,9 @@ class DrawingView: UIView {
                 height: drawingHeight
             )
         }
+        
+        self.scale = CGSize(width: self.drawRect.width / videoSize.width, height: self.drawRect.height / videoSize.height)
+        self.videoSize = videoSize
     }
     
     required init?(coder: NSCoder) {
@@ -87,18 +92,17 @@ class DrawingView: UIView {
             } else {
                 context.setLineWidth(3)
             }
-            print("score: \(face.score)")
+            let box = face.rect
             //print("\(Date().timeIntervalSince1970 - self.startTime),\(box.midX),\(box.midY),\(box.width * box.height),\(box.width / box.height)")
             // Here, self.bounds is the frame of this view, which is sized to match the preview layer.
             
-            let box = face.rect
             
             // Flip the Y-coordinate because Vision's origin is bottom-left, and UIKit's is top-left.
             let flippedRect = CGRect(
-                x: drawRect.origin.x + (1 - box.maxX) * drawRect.width,
-                y: drawRect.origin.y + (1 - box.maxY) * drawRect.height,
-                width: box.width * drawRect.width,
-                height: box.height * drawRect.height
+                x: drawRect.origin.x + (self.videoSize.width - box.maxX) * scale.width,
+                y: drawRect.origin.y + (self.videoSize.height - box.maxY) * scale.height,
+                width: box.width * scale.width,
+                height: box.height * scale.height
             )
             
             context.stroke(flippedRect)
@@ -133,7 +137,7 @@ class DrawingView: UIView {
 // The UIViewRepresentable now manages a container view that holds both
 // the camera preview layer and the drawing view on top.
 struct CameraPreview: UIViewRepresentable {
-    @ObservedObject var cameraManager: CameraManager
+    @ObservedObject var cameraManager: AVManager
     
     func makeUIView(context: Context) -> UIView {
         let view = UIView(frame: UIScreen.main.bounds)
@@ -186,7 +190,7 @@ struct CameraPreview: UIViewRepresentable {
 // The ContentView becomes very clean, as all the complex drawing logic
 // is now encapsulated in the CameraPreview representable.
 struct ContentView: View {
-    @StateObject private var cameraManager = CameraManager()
+    @StateObject private var cameraManager = AVManager()
     
     var body: some View {
         CameraPreview(cameraManager: cameraManager)

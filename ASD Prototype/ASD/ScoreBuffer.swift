@@ -18,7 +18,7 @@ extension ASD {
             var hits: UInt32 = 0
             
             var score: Float {
-                return cumulativeScore//self.hits > 0 ? self.cumulativeScore / Float(self.hits) : 0
+                return cumulativeScore //self.hits > 0 ? self.cumulativeScore / Float(self.hits) : 0
             }
             
             mutating func update(with score: Float) {

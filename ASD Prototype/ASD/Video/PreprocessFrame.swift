@@ -53,7 +53,7 @@ extension ASD {
         let srcH       = CVPixelBufferGetHeight(pixelBuffer)
         let srcStride  = CVPixelBufferGetBytesPerRow(pixelBuffer)
         let cropX      = Int(cropRect.origin.x)
-        let cropY      = Int(cropRect.origin.y)
+        let cropY      = srcH - Int(cropRect.maxY)
         let cropW      = Int(cropRect.width)
         let cropH      = Int(cropRect.height)
         let cropStride = cropW * 4

@@ -13,7 +13,7 @@ import UIKit
 import SwiftUI
 
 
-class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDataOutputSampleBufferDelegate, @unchecked Sendable {
+class AVManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDataOutputSampleBufferDelegate, @unchecked Sendable {
     // This allows the CameraPreview vbut hiew to reactively update when the session is ready.
     @Published var captureSession: AVCaptureSession?
     
@@ -42,24 +42,15 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
     // MARK: - AVCaptureVideoDataOutputSampleBufferDelegate
     
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        Task {
-            do {
-                if let res = try await self.asd?.update(videoSample: sampleBuffer, connection: connection) {
-                    
-                    await MainActor.run {
-                        self.detections = res
-                    }
-                }
-            } catch {
-                print("video Error: \(error)")
-            }
+        do {
+            try self.asd?.update(videoSample: sampleBuffer, connection: connection)
+        } catch {
+            print("Video Error: \(error)")
         }
-        /*if output is AVCaptureVideoDataOutput {
-        } else {
-            Task {
-                await self.asd?.updateAudio(audioSample: sampleBuffer)
-            }
-        }*/
+//        if output is AVCaptureVideoDataOutput {
+//        } else {
+//            self.asd?.updateAudio(audioSample: sampleBuffer)
+//        }
     }
     
     // Public methods to control session from the UI. These are useful for app lifecycle events.
@@ -121,16 +112,21 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
     }
     
     private func setupCaptureSession() {
+        print("Setting up capture session...")
         // This method should only be called from the sessionQueue
         
         let session = AVCaptureSession()
         session.sessionPreset = .hd1280x720
         
         self.setupCamera(for: session)
-        self.setupMicrophone(for: session)
+        //self.setupMicrophone(for: session)
         
         let currentTime = CMClockGetTime(session.synchronizationClock!).seconds
-        self.asd = .init(atTime: currentTime)
+        self.asd = .init(atTime: currentTime) { speakers in
+            Task.detached { @MainActor in
+                self.detections = speakers
+            }
+        }
         
         session.startRunning()
         
