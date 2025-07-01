@@ -13,7 +13,7 @@ import AVFoundation
 // than SwiftUI for this use case because its coordinate system is
 // directly tied to the camera preview layer's frame.
 class DrawingView: UIView {
-    var faces: [Tracking.Face] = [] {
+    var faces: [ASD.SpeakerData] = [] {
         // When this property is set, redraw the view.
         didSet {
             // Must be called on the main thread.
@@ -81,6 +81,13 @@ class DrawingView: UIView {
             } else {
                 context.setStrokeColor(UIColor.orange.cgColor)
             }
+            
+            if face.score > 0 {
+                context.setLineWidth(10)
+            } else {
+                context.setLineWidth(3)
+            }
+            print("score: \(face.score)")
             //print("\(Date().timeIntervalSince1970 - self.startTime),\(box.midX),\(box.midY),\(box.width * box.height),\(box.width / box.height)")
             // Here, self.bounds is the frame of this view, which is sized to match the preview layer.
             
@@ -126,7 +133,7 @@ class DrawingView: UIView {
 // The UIViewRepresentable now manages a container view that holds both
 // the camera preview layer and the drawing view on top.
 struct CameraPreview: UIViewRepresentable {
-    @ObservedObject var cameraManager: Tracking.CameraManager
+    @ObservedObject var cameraManager: CameraManager
     
     func makeUIView(context: Context) -> UIView {
         let view = UIView(frame: UIScreen.main.bounds)
@@ -179,7 +186,7 @@ struct CameraPreview: UIViewRepresentable {
 // The ContentView becomes very clean, as all the complex drawing logic
 // is now encapsulated in the CameraPreview representable.
 struct ContentView: View {
-    @StateObject private var cameraManager = Tracking.CameraManager()
+    @StateObject private var cameraManager = CameraManager()
     
     var body: some View {
         CameraPreview(cameraManager: cameraManager)
