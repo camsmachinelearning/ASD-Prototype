@@ -7,8 +7,16 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		D8BB08D02DFB98C00058444C /* yolov11n-face.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = D8BB08CF2DFB98C00058444C /* yolov11n-face.mlpackage */; };
 		D8BB08DC2DFBA33D0058444C /* LANumerics in Frameworks */ = {isa = PBXBuildFile; productRef = D8BB08DB2DFBA33D0058444C /* LANumerics */; };
+		D8FFC73B2E04E46E00F234F0 /* SwiftNP in Frameworks */ = {isa = PBXBuildFile; productRef = D8FFC73A2E04E46E00F234F0 /* SwiftNP */; };
+		D8FFC74C2E073CD900F234F0 /* AsyncAlgorithms in Frameworks */ = {isa = PBXBuildFile; productRef = D8FFC74B2E073CD900F234F0 /* AsyncAlgorithms */; };
+		D8FFC74F2E073D6700F234F0 /* BitCollections in Frameworks */ = {isa = PBXBuildFile; productRef = D8FFC74E2E073D6700F234F0 /* BitCollections */; };
+		D8FFC7512E073D6700F234F0 /* Collections in Frameworks */ = {isa = PBXBuildFile; productRef = D8FFC7502E073D6700F234F0 /* Collections */; };
+		D8FFC7532E073D6700F234F0 /* DequeModule in Frameworks */ = {isa = PBXBuildFile; productRef = D8FFC7522E073D6700F234F0 /* DequeModule */; };
+		D8FFC7552E073D6700F234F0 /* HashTreeCollections in Frameworks */ = {isa = PBXBuildFile; productRef = D8FFC7542E073D6700F234F0 /* HashTreeCollections */; };
+		D8FFC7572E073D6700F234F0 /* HeapModule in Frameworks */ = {isa = PBXBuildFile; productRef = D8FFC7562E073D6700F234F0 /* HeapModule */; };
+		D8FFC7592E073D6700F234F0 /* OrderedCollections in Frameworks */ = {isa = PBXBuildFile; productRef = D8FFC7582E073D6700F234F0 /* OrderedCollections */; };
+		D8FFC75B2E073D6700F234F0 /* _RopeModule in Frameworks */ = {isa = PBXBuildFile; productRef = D8FFC75A2E073D6700F234F0 /* _RopeModule */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -32,7 +40,6 @@
 		D8BB08992DFB764F0058444C /* ASD Prototype.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "ASD Prototype.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		D8BB08A82DFB76510058444C /* ASD PrototypeTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "ASD PrototypeTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		D8BB08B22DFB76510058444C /* ASD PrototypeUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "ASD PrototypeUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
-		D8BB08CF2DFB98C00058444C /* yolov11n-face.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = folder.mlpackage; path = "yolov11n-face.mlpackage"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -51,6 +58,11 @@
 			path = "ASD PrototypeUITests";
 			sourceTree = "<group>";
 		};
+		D8FFC72E2E04C9CE00F234F0 /* Models */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Models;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -58,7 +70,16 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D8FFC74F2E073D6700F234F0 /* BitCollections in Frameworks */,
+				D8FFC73B2E04E46E00F234F0 /* SwiftNP in Frameworks */,
+				D8FFC7512E073D6700F234F0 /* Collections in Frameworks */,
+				D8FFC7552E073D6700F234F0 /* HashTreeCollections in Frameworks */,
 				D8BB08DC2DFBA33D0058444C /* LANumerics in Frameworks */,
+				D8FFC7592E073D6700F234F0 /* OrderedCollections in Frameworks */,
+				D8FFC74C2E073CD900F234F0 /* AsyncAlgorithms in Frameworks */,
+				D8FFC7572E073D6700F234F0 /* HeapModule in Frameworks */,
+				D8FFC75B2E073D6700F234F0 /* _RopeModule in Frameworks */,
+				D8FFC7532E073D6700F234F0 /* DequeModule in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -82,11 +103,11 @@
 		D8BB08902DFB764F0058444C = {
 			isa = PBXGroup;
 			children = (
+				D8FFC72E2E04C9CE00F234F0 /* Models */,
 				D8BB089B2DFB764F0058444C /* ASD Prototype */,
 				D8BB08AB2DFB76510058444C /* ASD PrototypeTests */,
 				D8BB08B52DFB76510058444C /* ASD PrototypeUITests */,
 				D8BB089A2DFB764F0058444C /* Products */,
-				D8BB08CF2DFB98C00058444C /* yolov11n-face.mlpackage */,
 			);
 			sourceTree = "<group>";
 		};
@@ -117,10 +138,20 @@
 			);
 			fileSystemSynchronizedGroups = (
 				D8BB089B2DFB764F0058444C /* ASD Prototype */,
+				D8FFC72E2E04C9CE00F234F0 /* Models */,
 			);
 			name = "ASD Prototype";
 			packageProductDependencies = (
 				D8BB08DB2DFBA33D0058444C /* LANumerics */,
+				D8FFC73A2E04E46E00F234F0 /* SwiftNP */,
+				D8FFC74B2E073CD900F234F0 /* AsyncAlgorithms */,
+				D8FFC74E2E073D6700F234F0 /* BitCollections */,
+				D8FFC7502E073D6700F234F0 /* Collections */,
+				D8FFC7522E073D6700F234F0 /* DequeModule */,
+				D8FFC7542E073D6700F234F0 /* HashTreeCollections */,
+				D8FFC7562E073D6700F234F0 /* HeapModule */,
+				D8FFC7582E073D6700F234F0 /* OrderedCollections */,
+				D8FFC75A2E073D6700F234F0 /* _RopeModule */,
 			);
 			productName = "ASD Prototype";
 			productReference = D8BB08992DFB764F0058444C /* ASD Prototype.app */;
@@ -184,6 +215,7 @@
 				TargetAttributes = {
 					D8BB08982DFB764F0058444C = {
 						CreatedOnToolsVersion = 16.4;
+						LastSwiftMigration = 1640;
 					};
 					D8BB08A72DFB76510058444C = {
 						CreatedOnToolsVersion = 16.4;
@@ -207,6 +239,10 @@
 			packageReferences = (
 				D8BB08D92DFB9FF00058444C /* XCRemoteSwiftPackageReference "LASwift" */,
 				D8BB08DA2DFBA33D0058444C /* XCRemoteSwiftPackageReference "LANumerics" */,
+				D8AE12232E011B06003E8CDD /* XCRemoteSwiftPackageReference "HungarianAlgorithm" */,
+				D8FFC7392E04E46E00F234F0 /* XCRemoteSwiftPackageReference "SwiftNP" */,
+				D8FFC74A2E073CD900F234F0 /* XCRemoteSwiftPackageReference "swift-async-algorithms" */,
+				D8FFC74D2E073D6700F234F0 /* XCRemoteSwiftPackageReference "swift-collections" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D8BB089A2DFB764F0058444C /* Products */;
@@ -249,7 +285,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D8BB08D02DFB98C00058444C /* yolov11n-face.mlpackage in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -407,15 +442,20 @@
 		D8BB08BD2DFB76510058444C /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
+				COREML_CODEGEN_LANGUAGE = Swift;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = X9PT5KMK89;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_RESOURCE_ACCESS_CAMERA = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/**";
 				INFOPLIST_KEY_NSCameraUsageDescription = "\"This app uses the camera to detect faces in real-time.\"";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "\"This App uses the microphone so that it can analyze what you're saying\"";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -425,11 +465,17 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				LIBRARY_SEARCH_PATHS = "";
 				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = "LearningSwift.ASD-Prototype";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_OBJC_INTEROP_MODE = objcxx;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_MEMORY_SAFETY = NO;
+				SWIFT_UPCOMING_FEATURE_INTERNAL_IMPORTS_BY_DEFAULT = YES;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -437,15 +483,20 @@
 		D8BB08BE2DFB76510058444C /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
+				COREML_CODEGEN_LANGUAGE = Swift;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = X9PT5KMK89;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_RESOURCE_ACCESS_CAMERA = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/**";
 				INFOPLIST_KEY_NSCameraUsageDescription = "\"This app uses the camera to detect faces in real-time.\"";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "\"This App uses the microphone so that it can analyze what you're saying\"";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -455,11 +506,16 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				LIBRARY_SEARCH_PATHS = "";
 				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = "LearningSwift.ASD-Prototype";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_OBJC_INTEROP_MODE = objcxx;
+				SWIFT_STRICT_MEMORY_SAFETY = NO;
+				SWIFT_UPCOMING_FEATURE_INTERNAL_IMPORTS_BY_DEFAULT = YES;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
@@ -578,6 +634,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		D8AE12232E011B06003E8CDD /* XCRemoteSwiftPackageReference "HungarianAlgorithm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/delicious-ai/HungarianAlgorithm.git";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
 		D8BB08D92DFB9FF00058444C /* XCRemoteSwiftPackageReference "LASwift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/AlexanderTar/LASwift.git";
@@ -594,6 +658,30 @@
 				kind = branch;
 			};
 		};
+		D8FFC7392E04E46E00F234F0 /* XCRemoteSwiftPackageReference "SwiftNP" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/k-arindam/SwiftNP.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.0.7;
+			};
+		};
+		D8FFC74A2E073CD900F234F0 /* XCRemoteSwiftPackageReference "swift-async-algorithms" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-async-algorithms.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.4;
+			};
+		};
+		D8FFC74D2E073D6700F234F0 /* XCRemoteSwiftPackageReference "swift-collections" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-collections.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.2.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -601,6 +689,51 @@
 			isa = XCSwiftPackageProductDependency;
 			package = D8BB08DA2DFBA33D0058444C /* XCRemoteSwiftPackageReference "LANumerics" */;
 			productName = LANumerics;
+		};
+		D8FFC73A2E04E46E00F234F0 /* SwiftNP */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D8FFC7392E04E46E00F234F0 /* XCRemoteSwiftPackageReference "SwiftNP" */;
+			productName = SwiftNP;
+		};
+		D8FFC74B2E073CD900F234F0 /* AsyncAlgorithms */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D8FFC74A2E073CD900F234F0 /* XCRemoteSwiftPackageReference "swift-async-algorithms" */;
+			productName = AsyncAlgorithms;
+		};
+		D8FFC74E2E073D6700F234F0 /* BitCollections */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D8FFC74D2E073D6700F234F0 /* XCRemoteSwiftPackageReference "swift-collections" */;
+			productName = BitCollections;
+		};
+		D8FFC7502E073D6700F234F0 /* Collections */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D8FFC74D2E073D6700F234F0 /* XCRemoteSwiftPackageReference "swift-collections" */;
+			productName = Collections;
+		};
+		D8FFC7522E073D6700F234F0 /* DequeModule */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D8FFC74D2E073D6700F234F0 /* XCRemoteSwiftPackageReference "swift-collections" */;
+			productName = DequeModule;
+		};
+		D8FFC7542E073D6700F234F0 /* HashTreeCollections */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D8FFC74D2E073D6700F234F0 /* XCRemoteSwiftPackageReference "swift-collections" */;
+			productName = HashTreeCollections;
+		};
+		D8FFC7562E073D6700F234F0 /* HeapModule */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D8FFC74D2E073D6700F234F0 /* XCRemoteSwiftPackageReference "swift-collections" */;
+			productName = HeapModule;
+		};
+		D8FFC7582E073D6700F234F0 /* OrderedCollections */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D8FFC74D2E073D6700F234F0 /* XCRemoteSwiftPackageReference "swift-collections" */;
+			productName = OrderedCollections;
+		};
+		D8FFC75A2E073D6700F234F0 /* _RopeModule */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D8FFC74D2E073D6700F234F0 /* XCRemoteSwiftPackageReference "swift-collections" */;
+			productName = _RopeModule;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
