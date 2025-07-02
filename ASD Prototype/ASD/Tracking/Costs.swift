@@ -30,19 +30,4 @@ extension ASD.Tracking {
             self.total = total
         }
     }
-    
-    final class CostConfiguration {
-        public let motionWeight: Float
-        public let minIou: Float
-        public let maxMotionCost: Float
-        public let maxAppearanceCost: Float
-        
-        //old motion cost: 9.4877
-        init(motionWeight: Float = 0.1, minIou: Float = 0.3, maxMotionCost: Float = Float.infinity, maxAppearanceCost: Float = 0.3) {
-            self.motionWeight = motionWeight
-            self.minIou = minIou
-            self.maxMotionCost = maxMotionCost
-            self.maxAppearanceCost = maxAppearanceCost
-        }
-    }
 }

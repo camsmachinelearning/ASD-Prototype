@@ -6,26 +6,22 @@
 //
 
 import Foundation
-@preconcurrency import Vision
+import Vision
 import CoreML
 import ImageIO
 
 extension ASD.Tracking {
     final class FaceEmbedder {
-        private static let model: VNCoreMLModel = {
-            print("Loading Embedder Model...")
-            let mlModel = try? MobileFaceNet(configuration: MLModelConfiguration())
-            let vnModel = try? VNCoreMLModel(for: mlModel!.model)
-            print("Loaded Embedder model\n")
-            return vnModel!
-        }()
-        
+        private let model: VNCoreMLModel
         private let minReadyRequests: Int
+        private let requestLifespan: DispatchTimeInterval
         private var requests: [VNCoreMLRequest]
         private var expirations: [DispatchTime]
-        private let requestLifespan: DispatchTimeInterval
         
-        init(verbose: Bool = false, requestLifespan: DispatchTimeInterval = .seconds(5), minReadyRequests: Int = 8) {
+        init(verbose: Bool = false,
+             requestLifespan: DispatchTimeInterval = embedderRequestLifespan,
+             minReadyRequests: Int = minReadyEmbedderRequests)
+        {
             self.requestLifespan = requestLifespan
             self.minReadyRequests = minReadyRequests
             self.requests = []
@@ -33,8 +29,23 @@ extension ASD.Tracking {
             self.requests.reserveCapacity(minReadyRequests * 2)
             self.expirations.reserveCapacity(minReadyRequests)
             
+            if verbose {
+                print("Loading Face Embedder model...")
+            }
+            
+            do {
+                let mlModel = try MobileFaceNet(configuration: MLModelConfiguration())
+                self.model = try VNCoreMLModel(for: mlModel.model)
+            } catch {
+                fatalError("Failed to load Face Embedder model: \(error.localizedDescription)")
+            }
+            
+            if verbose {
+                print("Loaded Face Embedder model\n")
+            }
+            
             for _ in 0..<minReadyRequests {
-                let r = VNCoreMLRequest(model: FaceEmbedder.model)
+                let r = VNCoreMLRequest(model: self.model)
                 r.imageCropAndScaleOption = .scaleFill
                 self.requests.append(r)
             }
@@ -43,6 +54,24 @@ extension ASD.Tracking {
         @discardableResult
         func embed(faces rects: [CGRect], in pixelBuffer: CVPixelBuffer, orientation: CGImagePropertyOrientation) -> [MLMultiArray] {
             self.refreshRequests(num: rects.count)
+            
+            let bufferWidth = CGFloat(CVPixelBufferGetWidth(pixelBuffer))
+            let bufferHeight = CGFloat(CVPixelBufferGetHeight(pixelBuffer))
+            
+            let rects = rects.map { rect in
+                let size = max(rect.width * bufferWidth, rect.height * bufferHeight)
+                let width = size / bufferWidth
+                let height = size / bufferHeight
+                let halfWidth = width / 2
+                let halfHeight = height / 2
+                
+                return CGRect(
+                    x: rect.midX - halfWidth,
+                    y: rect.midY - halfHeight,
+                    width: width,
+                    height: height
+                )
+            }
             
             let maxRect = CGRect(x: 0, y: 0, width: 1, height: 1)
             for (request, rect) in zip(requests, rects) {
@@ -95,7 +124,7 @@ extension ASD.Tracking {
             }
             
             for _ in 0..<num {
-                let r = VNCoreMLRequest(model: FaceEmbedder.model)
+                let r = VNCoreMLRequest(model: self.model)
                 r.imageCropAndScaleOption = .scaleFit
                 self.requests.append(r)
                 self.expirations.append(expirationTime)

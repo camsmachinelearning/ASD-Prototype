@@ -17,6 +17,7 @@ extension ASD.Tracking {
         // MARK: public enums
         enum TrackInitializationError: Error {
             case missingEmbedding
+            case embeddingDimensionMismatch
         }
         
         enum Status {
@@ -50,10 +51,11 @@ extension ASD.Tracking {
         public private(set) var status: Status = .pending
         public private(set) var embedding: MLMultiArray
         public private(set) var averageAppearanceCost: Float
+        public private(set) var isPermanent: Bool = false
         
         // MARK: public computed properties
         public var isDeletable: Bool {
-            return self.status.isPending && self.hits <= 0
+            return (self.status.isPending && self.hits <= 0) || (self.isPermanent == false && self.hits <= -self.configuration.deletionThreshold)
         }
         
         public var needsEmbeddingUpdate: Bool {
@@ -91,6 +93,33 @@ extension ASD.Tracking {
             self.configuration = trackConfiguration
         }
         
+        /// Permanent track constructor
+        /// - Parameter id: Track ID
+        /// - Parameter embedding: Facial feature embedding
+        /// - Parameter trackConfiguration: trackConfiguration of parent tracker
+        /// - Parameter costConfiguration: costConfiguration of parent tracker
+        /// - Parameter detection: the detection associated with this track (if left blank then the track will initialize as inactive)
+        /// - Throws `embeddingDimensionMismatch` when `embedding` does not have the right shape, namely (1,128) or (128,)
+        public init(id: UUID, embedding: MLMultiArray, trackConfiguration: TrackConfiguration, costConfiguration: CostConfiguration, detection: Detection? = nil) throws {
+            if embedding.shape.last != 128 || embedding.count != 128 {
+                throw TrackInitializationError.embeddingDimensionMismatch
+            }
+            self.embedding = embedding
+            self.kalmanFilter = VisualKF(initialObservation: detection?.rect ?? .zero)
+            self.averageAppearanceCost = costConfiguration.maxAppearanceCost / 2
+            self.maxAppearanceCost = costConfiguration.maxAppearanceCost
+            self.iterationsUntilEmbeddingUpdate = trackConfiguration.iterationsPerEmbeddingUpdate
+            self.configuration = trackConfiguration
+            self.isPermanent = true
+            if let detection = detection {
+                self.status = .active
+                self.updateEmbedding(detection: detection, appearanceCost: self.cosineDistance(to: detection))
+            } else {
+                self.status = .inactive
+            }
+        }
+        
+        
         // MARK: public static methods
         
         static func == (lhs: Track, rhs: Track) -> Bool {
@@ -98,6 +127,20 @@ extension ASD.Tracking {
         }
         
         // MARK: public methods
+        
+        /// Prevent the track from being deleted
+        public func retain() {
+            self.isPermanent = true
+            if self.status.isPending {
+                self.status = .active
+                self.hits = 0
+            }
+        }
+        
+        /// Allow the track to be deleted
+        public func release() {
+            self.isPermanent = false
+        }
         
         /// Run the Kalman filter's prediction step and record that another iteration has started.
         @inline(__always)
@@ -112,7 +155,11 @@ extension ASD.Tracking {
         func registerHit(with detection: Detection, costs: Costs) {
             // register hit
             if !self.status.isActive {
-                self.hits += 1
+                if self.hits < 0 {
+                    self.hits = 1
+                } else {
+                    self.hits += 1
+                }
                 
                 // check if the track is ready for activation
                 let threshold = (
@@ -122,6 +169,10 @@ extension ASD.Tracking {
                 )
                 
                 if self.hits >= threshold {
+                    if status.isInactive {
+                        self.kalmanFilter.rect = detection.rect
+                    }
+                    
                     self.status = .active
                     self.hits = 0
                 }
@@ -157,6 +208,8 @@ extension ASD.Tracking {
                     self.kalmanFilter.yVelocity *= self.configuration.velocityDamping
                     self.kalmanFilter.growthRate *= self.configuration.growthDamping
                 }
+            } else if self.status.isInactive {
+                self.hits -= 1
             } else {
                 self.hits = 0
             }
@@ -195,35 +248,6 @@ extension ASD.Tracking {
             self.averageAppearanceCost += (appearanceCost - self.averageAppearanceCost) * alpha
             Utils.ML.updateEMA(ema: self.embedding, with: newEmbedding, alpha: alpha)
             self.iterationsUntilEmbeddingUpdate = self.configuration.iterationsPerEmbeddingUpdate
-        }
-    }
-    
-    final class TrackConfiguration {
-        public let confirmationThreshold: Int
-        public let activationThreshold: Int
-        public let deactivationThreshold: Int
-        public let iterationsPerEmbeddingUpdate: Int
-        public let embeddingAlpha: Float
-        
-        public let velocityDamping: Float
-        public let growthDamping: Float
-        
-        init(confirmationThreshold: Int = 15,
-             activationThreshold: Int = 2,
-             deactivationThreshold: Int = 8,
-             iterationsPerEmbeddingUpdate: Int = 5,
-             embeddingAlpha: Float = 0.1,
-             velocityDamping: Float = 0.5,
-             growthDamping: Float = 0.1,
-             dt: Float = 1.0 / 30.0)
-        {
-            self.confirmationThreshold = confirmationThreshold
-            self.activationThreshold = activationThreshold
-            self.deactivationThreshold = deactivationThreshold
-            self.iterationsPerEmbeddingUpdate = iterationsPerEmbeddingUpdate
-            self.embeddingAlpha = embeddingAlpha
-            self.velocityDamping = pow(velocityDamping, dt)
-            self.growthDamping = pow(growthDamping, dt)
         }
     }
 }

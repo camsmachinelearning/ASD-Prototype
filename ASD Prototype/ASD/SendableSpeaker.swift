@@ -12,7 +12,7 @@ import Vision
 
 
 extension ASD {
-    struct SpeakerData:
+    struct SendableSpeaker:
         Sendable,
         Identifiable,
         Hashable,
@@ -25,9 +25,9 @@ extension ASD {
         let misses: Int
         let score: Float
         
-        var string: String { "ID: \(id.uuidString)\n\(self.costString)" }
+        var string: String { "ID: \(id.uuidString)\n\(self.costString)\nScore: \(score)" }
         
-        init(track: Tracking.Tracker.SendableTrack, score: Float, rect: CGRect? = nil) {
+        init(track: Tracking.SendableTrack, score: Float, rect: CGRect? = nil) {
             self.id = track.id
             self.rect = rect ?? track.rect
             self.status = track.status
@@ -36,7 +36,7 @@ extension ASD {
             self.score = score
         }
         
-        static func == (lhs: SpeakerData, rhs: SpeakerData) -> Bool {
+        static func == (lhs: SendableSpeaker, rhs: SendableSpeaker) -> Bool {
             return lhs.id == rhs.id
         }
         

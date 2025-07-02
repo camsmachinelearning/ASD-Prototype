@@ -6,26 +6,36 @@
 //
 
 import Foundation
-@preconcurrency import Vision
+import Vision
 import CoreML
 import ImageIO
 
 
 extension ASD.Tracking {
     final class FaceDetector {
-        private static let model: VNCoreMLModel = {
-            print("Loading Detector Model...")
-            let mlModel = try? YOLOv11n(configuration: MLModelConfiguration())
-            let vnModel = try? VNCoreMLModel(for: mlModel!.model)
-            print("Loaded Detector model\n")
-            return vnModel!
-        }()
-        
-        private var request: VNCoreMLRequest
+        private let model: VNCoreMLModel
         private let confidenceThreshold: Float
+        private let request: VNCoreMLRequest
         
-        init(verbose: Bool = false, confidenceThreshold: Float = 0.5) {
-            self.request = VNCoreMLRequest(model: FaceDetector.model)
+        init(verbose: Bool = false,
+             confidenceThreshold: Float = detectorConfidenceThreshold)
+        {
+            if verbose {
+                print("Loading Face Detector model...")
+            }
+            
+            do {
+                let mlModel = try YOLOv11n(configuration: MLModelConfiguration())
+                self.model = try VNCoreMLModel(for: mlModel.model)
+            } catch {
+                fatalError("Failed to load Face Detector model: \(error.localizedDescription)")
+            }
+            
+            if verbose {
+                print("Loaded Face Detector model\n")
+            }
+            
+            self.request = VNCoreMLRequest(model: self.model)
             self.request.imageCropAndScaleOption = .scaleFit
             self.confidenceThreshold = confidenceThreshold
         }

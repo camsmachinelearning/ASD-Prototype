@@ -18,7 +18,7 @@ class AVManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBuffe
     @Published var captureSession: AVCaptureSession?
     
     // Published properties to update the SwiftUI view
-    @Published public private(set) var detections: [ASD.SpeakerData] = []
+    @Published public private(set) var detections: [ASD.SendableSpeaker] = []
     
     public private(set) var videoSize: CGSize
     

@@ -18,12 +18,22 @@ extension ASD {
             var hits: UInt32 = 0
             
             var score: Float {
-                return cumulativeScore //self.hits > 0 ? self.cumulativeScore / Float(self.hits) : 0
+                return self.hits > 0 ? self.cumulativeScore / Float(self.hits) : 0
             }
             
             mutating func update(with score: Float) {
                 self.cumulativeScore = score
                 self.hits += 1
+            }
+            
+            mutating func reset() {
+                self.cumulativeScore = 0
+                self.hits = 0
+            }
+            
+            mutating func reset(to score: Float) {
+                self.cumulativeScore = score
+                self.hits = 1
             }
         }
         
@@ -37,8 +47,8 @@ extension ASD {
         
         // MARK: Constructors
         
-        public init(atTime time: Double, frontPadding: Int = 25, capacity: Int = 53) {
-            self.writeIndex = frontPadding
+        public init(atTime time: Double, capacity: Int = 53) {
+            self.writeIndex = 0
             self.buffer = .init(repeating: .init(), count: capacity)
         }
         
@@ -70,16 +80,17 @@ extension ASD {
         ///   - time the time at which the input was processed or added
         ///   - source the data source from which to write
         ///   - offset how many indices to skip
-        public func write(from source: MLMultiArray, offsetBy offset: Int = 0) {
-            var i = Utils.mod(self.writeIndex + offset - source.count, self.bufferSize)
+        public func write(from source: MLMultiArray, count numNew: Int) {
+            var i = Utils.mod(self.writeIndex + numNew - source.count, self.bufferSize)
             
             source.withUnsafeBufferPointer(ofType: Float.self) { ptr in
-                for score in ptr {
+                for score in ptr[0..<source.count-numNew] {
                     self.buffer[i].update(with: score)
-                    i += 1
-                    if i == self.bufferSize {
-                        i = 0
-                    }
+                    Utils.advance_index(&i, by: 1, modulo: self.bufferSize)
+                }
+                for score in ptr[source.count-numNew..<source.count] {
+                    self.buffer[i].reset(to: score)
+                    Utils.advance_index(&i, by: 1, modulo: self.bufferSize)
                 }
                 self.writeIndex = i
             }

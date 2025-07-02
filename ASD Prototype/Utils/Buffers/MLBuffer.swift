@@ -62,7 +62,7 @@ extension Utils {
             assert(self.chunkSize == defaultChunk.count)
             
             self.windowSize = chunkSize * length
-            self.paddedWindowSize = chunkSize * (length + frontPadding - 1)
+            self.paddedWindowSize = chunkSize * (length + frontPadding)
             self.numChunks = length + frontPadding + backPadding
             self.buffer = []
             self.buffer.reserveCapacity(chunkSize * numChunks)
@@ -255,7 +255,7 @@ extension Utils {
         /// - Returns an MLMultiArray made from the data in the buffer
         public func read(at index: Int) -> MLMultiArray {
             return try! MLMultiArray(
-                dataPointer: &self.buffer[self.startIndex + index * self.chunkSize],
+                dataPointer: &self.buffer[self.startIndex + (index + 1) * self.chunkSize],
                 shape: self.shape,
                 dataType: .float32,
                 strides: self.strides

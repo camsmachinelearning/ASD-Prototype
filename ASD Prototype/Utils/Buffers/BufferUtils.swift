@@ -56,5 +56,19 @@ extension Utils {
         return (lo, hi)
     }
     
+    @inline(__always)
+    static func advance_index(_ index: inout Int, by increment: Int, wrapTo startIndex: Int, wrapAt endIndex: Int) {
+        index += increment
+        if index >= endIndex {
+            index = startIndex
+        }
+    }
     
+    @inline(__always)
+    static func advance_index(_ index: inout Int, by increment: Int, modulo modulus: Int) {
+        index += increment
+        if index >= modulus {
+            index = 0
+        }
+    }
 }

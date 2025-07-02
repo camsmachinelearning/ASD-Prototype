@@ -103,14 +103,25 @@ extension ASD.Tracking {
         }
         
         public var rect: CGRect {
-            let width = self.width
-            let height = self.height
-            return CGRect(
-                x: CGFloat(self.xPosition - width / 2),
-                y: CGFloat(self.yPosition - height / 2),
-                width: CGFloat(width),
-                height: CGFloat(height)
-            )
+            get {
+                let width = self.width
+                let height = self.height
+                return CGRect(
+                    x: CGFloat(self.xPosition - width / 2),
+                    y: CGFloat(self.yPosition - height / 2),
+                    width: CGFloat(width),
+                    height: CGFloat(height)
+                )
+            }
+            set {
+                let width = Float(newValue.width)
+                let height = Float(newValue.height)
+                
+                self.scale = width * height
+                self.aspectRatio = width / height
+                self.xPosition = Float(newValue.midX)
+                self.yPosition = Float(newValue.midY)
+            }
         }
         
         private var dt: Float

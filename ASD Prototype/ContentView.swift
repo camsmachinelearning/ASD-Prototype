@@ -13,7 +13,7 @@ import AVFoundation
 // than SwiftUI for this use case because its coordinate system is
 // directly tied to the camera preview layer's frame.
 class DrawingView: UIView {
-    var faces: [ASD.SpeakerData] = [] {
+    var faces: [ASD.SendableSpeaker] = [] {
         // When this property is set, redraw the view.
         didSet {
             // Must be called on the main thread.
@@ -58,7 +58,7 @@ class DrawingView: UIView {
             )
         }
         
-        self.scale = CGSize(width: self.drawRect.width / videoSize.width, height: self.drawRect.height / videoSize.height)
+        self.scale = CGSize(width: self.drawRect.width/* / videoSize.width*/, height: self.drawRect.height/* / videoSize.height*/)
         self.videoSize = videoSize
     }
     
@@ -93,14 +93,14 @@ class DrawingView: UIView {
                 context.setLineWidth(3)
             }
             let box = face.rect
-            //print("\(Date().timeIntervalSince1970 - self.startTime),\(box.midX),\(box.midY),\(box.width * box.height),\(box.width / box.height)")
+//            print("\(Date().timeIntervalSince1970 - self.startTime),\(box.midX),\(box.midY),\(box.width * box.height),\(box.width / box.height)")
             // Here, self.bounds is the frame of this view, which is sized to match the preview layer.
             
             
             // Flip the Y-coordinate because Vision's origin is bottom-left, and UIKit's is top-left.
             let flippedRect = CGRect(
-                x: drawRect.origin.x + (self.videoSize.width - box.maxX) * scale.width,
-                y: drawRect.origin.y + (self.videoSize.height - box.maxY) * scale.height,
+                x: drawRect.origin.x + (1 - box.maxX) * scale.width,
+                y: drawRect.origin.y + (1 - box.maxY) * scale.height,
                 width: box.width * scale.width,
                 height: box.height * scale.height
             )

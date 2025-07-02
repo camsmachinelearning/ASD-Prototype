@@ -5,19 +5,14 @@
 //  Created by Benjamin Lee on 6/19/25.
 //
 
-@preconcurrency import Vision
-@preconcurrency import CoreML
-
+import Vision
+import CoreML
 import Foundation
-import CoreImage
-import Accelerate
-import UIKit
 import OrderedCollections
-import ImageIO
 
 
 extension ASD.Tracking {
-    class FaceProcessor {
+    final class FaceProcessor {
         // MARK: private properties
         
         private let detector: FaceDetector
@@ -26,9 +21,9 @@ extension ASD.Tracking {
         // MARK: public methods
         
         init (verbose: Bool = false,
-              detectorConfidenceThreshold: Float = 0.5,
-              embedderRequestLifespan: DispatchTimeInterval = .seconds(5),
-              minReadyEmbedderRequests: Int = 8) {
+              detectorConfidenceThreshold: Float = detectorConfidenceThreshold,
+              embedderRequestLifespan: DispatchTimeInterval = embedderRequestLifespan,
+              minReadyEmbedderRequests: Int = minReadyEmbedderRequests) {
             self.detector = FaceDetector(verbose: verbose, confidenceThreshold: detectorConfidenceThreshold)
             self.embedder = FaceEmbedder(verbose: verbose, requestLifespan: embedderRequestLifespan, minReadyRequests: minReadyEmbedderRequests)
         }

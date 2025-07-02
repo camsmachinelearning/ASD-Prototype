@@ -9,8 +9,8 @@ import Foundation
 import OrderedCollections
 import CoreMedia
 import ImageIO
-import PRNG
 import LANumerics
+import CoreML
 
 
 extension ASD.Tracking {
@@ -20,22 +20,6 @@ extension ASD.Tracking {
             case rlapInvalidCostMatrix
             case rlapInfeasibleCostMatrix
             case rlapUnknownError
-        }
-        
-        public struct SendableTrack: Sendable {
-            let id: UUID
-            let status: Track.Status
-            let rect: CGRect
-            let misses: Int
-            let costString: String
-            
-            init(_ track: Track) {
-                self.id = track.id
-                self.status = track.status
-                self.costString = "\(track.costs.string)\nAppearance (Average): \(track.averageAppearanceCost)"
-                self.rect = track.rect
-                self.misses = -track.hits
-            }
         }
         
         private struct AssignmentProgress {
@@ -57,6 +41,7 @@ extension ASD.Tracking {
         }
         
         // MARK: private properties
+        private let mergeTracks: (ASD.MergeRequest) -> Void
         private let faceProcessor: FaceProcessor
 
         private var activeTracks: OrderedSet<Track>
@@ -67,18 +52,23 @@ extension ASD.Tracking {
         private var trackConfiguration: TrackConfiguration
         
         // MARK: constructors
-        init(faceProcessor: FaceProcessor, costConfiguration: CostConfiguration = .init(), trackConfiguration: TrackConfiguration = .init()) {
+        init(faceProcessor: FaceProcessor,
+             costConfiguration: CostConfiguration = .init(),
+             trackConfiguration: TrackConfiguration = .init(),
+             mergeCallback mergeTracks: @escaping (ASD.MergeRequest) -> Void = { _ in })
+        {
             self.faceProcessor = faceProcessor
             self.activeTracks = []
             self.inactiveTracks = []
             self.pendingTracks = []
             self.costConfiguration = costConfiguration
             self.trackConfiguration = trackConfiguration
+            self.mergeTracks = mergeTracks
         }
         
         // MARK: public methods
         
-        func update(pixelBuffer: CVPixelBuffer, orientation: CGImagePropertyOrientation) -> [SendableTrack] {
+        public func update(pixelBuffer: CVPixelBuffer, orientation: CGImagePropertyOrientation) -> [SendableTrack] {
             // predict track motion
             for track in self.activeTracks {
                 track.predict()
@@ -111,6 +101,62 @@ extension ASD.Tracking {
         }
         
         
+        /// Add a permanent track to the tracker
+        /// - Parameters:
+        ///   - id: the track's ID
+        ///   - embedding: the track's facial feature embedding
+        ///   - detection: the detection associated with the track. Will initialize the track as inactive if not provided.
+        /// - Throws: when the embedding vector's shape is mismatched from the desired shape
+        public func addTrack(id: UUID, embedding: MLMultiArray, detection: Detection? = nil) throws {
+            let track = try Track(id: id, embedding: embedding, trackConfiguration: self.trackConfiguration, costConfiguration: self.costConfiguration, detection: detection)
+            if track.status == .active {
+                self.activeTracks.append(track)
+            } else {
+                self.inactiveTracks.append(track)
+            }
+        }
+        
+        /// Add a permanent track to the tracker
+        /// - Parameters:
+        ///   - track: the track being added
+        /// - Throws: when the track's status is pending
+        public func addTrack(_ track: Track) throws {
+            switch track.status {
+            case .active:
+                self.activeTracks.append(track)
+            case .inactive:
+                self.inactiveTracks.append(track)
+            default:
+                self.activeTracks.append(track)
+                track.retain()
+            }
+        }
+        
+        /// Add a permanent track to the tracker
+        /// - Parameters:
+        ///   - track: the track being removed
+        /// - Returns: true if the track was removed, false if not
+        public func removeTrack(_ track: Track) -> Bool {
+            track.release()
+            if self.activeTracks.remove(track) == nil {
+                if self.inactiveTracks.remove(track) == nil {
+                    return false
+                }
+            }
+            return true
+        }
+        
+        /// Add a permanent track to the tracker
+        /// - Parameters:
+        ///   - track: the track being removed
+        /// - Throws: when the track's status is pending
+        public func removeTrack(withID id: UUID) -> Bool {
+            if let track = (self.activeTracks.elements + self.inactiveTracks.elements).first(where: { $0.id == id }) {
+                return self.removeTrack(track)
+            }
+            return false
+        }
+        
         // MARK: private methods
         private func assign(_ progress: inout AssignmentProgress, pixelBuffer: CVPixelBuffer, orientation: CGImagePropertyOrientation) {
             // assign active tracks
@@ -136,53 +182,27 @@ extension ASD.Tracking {
             }
         }
         
+        @inline(__always)
         private func meetsAppearanceCostCutoff(_ track: Track, _ detection: Detection, _ costs: Costs) -> Bool {
             costs.appearance = track.cosineDistance(to: detection)
             return costs.appearance <= self.costConfiguration.maxAppearanceCost
         }
         
+        @inline(__always)
         private func meetsMotionCostCutoff(_ track: Track, _ detection: Detection, _ costs: Costs) -> Bool {
             costs.iou = track.iou(with: detection)
             return costs.iou >= self.costConfiguration.minIou
         }
         
-        private func registerHits(_ progress: inout AssignmentProgress) {
-            for (track, (detection, costs)) in progress.assignments {
-                let oldStatus = track.status
-                track.registerHit(with: detection, costs: costs)
-                
-                if track.status != oldStatus {
-                    switch track.status {
-                    case .inactive:
-                        self.inactiveTracks.remove(track)
-                    case .pending:
-                        self.pendingTracks.remove(track)
-                    default:
-                        break
-                    }
-                    
-                    if track.status == .active {
-                        self.activeTracks.append(track)
-                    } else {
-                        print("#warning: track wants to be moved to inactive/pending after hit")
-                    }
-                }
+        @inline(__always)
+        private func heuristicCost(costs: Costs) -> Float {
+            if costs.iou == Float.infinity {
+                return costs.appearance
             }
-        }
-        
-        private func registerMisses(_ progress: inout AssignmentProgress, tracks: inout OrderedSet<Track>, trackStatus: Track.Status) {
-            for track in progress.tracks {
-                track.registerMiss()
-                
-                if track.status != trackStatus || track.isDeletable {
-                    tracks.remove(track)
-                    if track.status == .inactive {
-                        self.inactiveTracks.append(track)
-                    } else {
-                        print("#warning: track wants to be moved to active/pending after miss")
-                    }
-                }
+            if costs.appearance == Float.infinity {
+                return costs.iou
             }
+            return costConfiguration.motionWeight * costs.iou + (1.0 - costConfiguration.motionWeight) * costs.appearance
         }
         
         /// Looks at all possible (Track, Detection) pairings and determines which ones meet the cost cutoffs.
@@ -347,17 +367,75 @@ extension ASD.Tracking {
             progress.potentialAssignments.removeAll()
         }
         
-        @inline(__always)
-        private func heuristicCost(costs: Costs) -> Float {
-            if costs.iou == Float.infinity {
-                return costs.appearance
+        private func registerHits(_ progress: inout AssignmentProgress) {
+            for (track, (detection, costs)) in progress.assignments {
+                let oldStatus = track.status
+                track.registerHit(with: detection, costs: costs)
+                
+                if track.status != oldStatus {
+                    switch oldStatus {
+                    case .inactive:
+                        self.inactiveTracks.remove(track)
+                    case .pending:
+                        self.pendingTracks.remove(track)
+                    default:
+                        break
+                    }
+                    
+                    if track.status == .active {
+                        self.activeTracks.append(track)
+                    } else {
+                        print("Warning: track wants to be moved to inactive/pending after hit")
+                    }
+                }
             }
-            if costs.appearance == Float.infinity {
-                return costs.iou
-            }
-            return costConfiguration.motionWeight * costs.iou + (1.0 - costConfiguration.motionWeight) * costs.appearance
         }
         
+        private func registerMisses(_ progress: inout AssignmentProgress, tracks: inout OrderedSet<Track>, trackStatus: Track.Status) {
+            for track in progress.tracks {
+                if track.status != trackStatus {
+                    print("Warning: track \(track) has status \(track.status), expected \(trackStatus)")
+                }
+                
+                track.registerMiss()
+                
+                if track.status != trackStatus || track.isDeletable {
+                    tracks.remove(track)
+                    if track.isDeletable == false {
+                        self.inactiveTracks.append(track)
+                    } else if track.status == .inactive {
+                        self.mergeInactiveTrack(track, tracks: tracks.elements + self.activeTracks.elements)
+                    } else {
+                        print("#warning: track wants to be moved to active/pending after miss")
+                    }
+                }
+            }
+        }
         
+        @discardableResult
+        private func mergeInactiveTrack(_ track: Track, tracks: [Track]) -> Bool {
+            var bestMatch: Track?
+            var minCost: Float = self.costConfiguration.maxAppearanceCost.nextUp
+            
+            for other in tracks {
+                if other == track {
+                    continue
+                }
+                
+                let cost = Utils.ML.cosineDistance(a: track.embedding, b: other.embedding)
+                if cost < minCost {
+                    bestMatch = other
+                    minCost = cost
+                }
+            }
+            
+            if let targetID = bestMatch?.id {
+                self.mergeTracks(.init(from: track.id, into: targetID))
+                print("merged \(track.id) into \(bestMatch!.id)")
+                return true
+            }
+            print("deleted inactive track \(track.id)")
+            return false
+        }
     }
 }
